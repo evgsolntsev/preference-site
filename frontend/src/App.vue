@@ -55,7 +55,7 @@ export default {
     },
     fetchData() {
       if (this.logged) {
-        this.axios.get("http://0.0.0.0:8090/room").then(response => {
+        this.axios.get(this.backend+"/room").then(response => {
           this.room = response.data;
           let playerIndex = -1;
           for (let i = 0; i < response.data.sides.length; i++) {
@@ -78,7 +78,7 @@ export default {
     },
     login() {
       console.log("trying to log in with '"+this.player+"' and '"+this.password+"'");
-      this.axios.post("http://0.0.0.0:8090/login", {
+      this.axios.post(this.backend+"/login", {
         "login": this.player,
         "password": this.password,
       }).then(response => {
@@ -100,6 +100,9 @@ export default {
       player: "",
       password: "",
       logged: false,
+      backend: process.env.NODE_ENV === 'development'
+        ? 'http://localhost:8090'
+        : 'http://52.91.188.222:8090',
       axios: axios.create({
         withCredentials: true
       })
