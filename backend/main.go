@@ -195,7 +195,7 @@ func main() {
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{
 			"http://0.0.0.0", "http://0.0.0.0:8080",
-			"http://52.91.188.222/", "https://52.91.188.222/",
+			"http://52.91.188.222", "https://52.91.188.222",
 		},
 		AllowCredentials: true,
 		Debug:            false,
