@@ -20,7 +20,7 @@ func room(w http.ResponseWriter, request *http.Request, playerName string) {
 			}, {
 
 				Suit: SuitDiamonds,
-				Rank: "A",
+				Rank: "K",
 			}, {
 
 				Suit: SuitSpades,
