@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -11,13 +10,7 @@ import (
 	"github.com/rs/cors"
 )
 
-func hello(w http.ResponseWriter, request *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "Hello, World!")
-}
-
 func room(w http.ResponseWriter, request *http.Request, playerName string) {
-	fmt.Println(playerName)
 	result := Room{
 		Sides: []RoomSideInfo{{
 			Name: "evgsol",
@@ -178,6 +171,15 @@ func room(w http.ResponseWriter, request *http.Request, playerName string) {
 		Status: RoomStatusPlaying,
 	}
 
+	for i, _ := range result.Sides {
+		if result.Sides[i].Name == playerName || result.Sides[i].Open {
+			continue
+		}
+		for j, _ := range result.Sides[i].Cards {
+			result.Sides[i].Cards[j] = UnknownCard
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(result); err != nil {
@@ -188,8 +190,7 @@ func room(w http.ResponseWriter, request *http.Request, playerName string) {
 func main() {
 	mux := http.NewServeMux()
 
-	mux.Handle("/hello", http.HandlerFunc(hello))
-	mux.Handle("/login", http.HandlerFunc(login))
+	mux.Handle("/login", handlers.LoggingHandler(os.Stdout, http.HandlerFunc(login)))
 	mux.Handle("/room", handlers.LoggingHandler(os.Stdout, loginRequired(room)))
 
 	c := cors.New(cors.Options{

@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -12,8 +11,10 @@ import (
 var key = []byte("my_secret_key")
 
 var users = map[string]string{
-	"evgsol":  "kek",
-	"solarka": "lol",
+	"evgsol":   "kek",
+	"solarka":  "lol",
+	"psmirnov": "arbidol",
+	"miracle":  "lavanda",
 }
 
 type Creds struct {
@@ -65,7 +66,6 @@ func loginRequired(f func(http.ResponseWriter, *http.Request, string)) http.Hand
 		c, err := r.Cookie("token")
 		if err != nil {
 			if err == http.ErrNoCookie {
-				fmt.Println("no cookie")
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
@@ -79,7 +79,6 @@ func loginRequired(f func(http.ResponseWriter, *http.Request, string)) http.Hand
 		})
 		if err != nil {
 			if err == jwt.ErrSignatureInvalid {
-				fmt.Println("signature invalid")
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
@@ -87,7 +86,6 @@ func loginRequired(f func(http.ResponseWriter, *http.Request, string)) http.Hand
 			return
 		}
 		if !token.Valid {
-			fmt.Println("token invalid")
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
