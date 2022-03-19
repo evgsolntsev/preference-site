@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -59,11 +60,12 @@ func login(w http.ResponseWriter, request *http.Request) {
 	})
 }
 
-func loginRequired(f func (http.ResponseWriter, *http.Request, string)) http.Handler {
+func loginRequired(f func(http.ResponseWriter, *http.Request, string)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie("token")
 		if err != nil {
 			if err == http.ErrNoCookie {
+				fmt.Println("no cookie")
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
@@ -77,6 +79,7 @@ func loginRequired(f func (http.ResponseWriter, *http.Request, string)) http.Han
 		})
 		if err != nil {
 			if err == jwt.ErrSignatureInvalid {
+				fmt.Println("signature invalid")
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
@@ -84,6 +87,7 @@ func loginRequired(f func (http.ResponseWriter, *http.Request, string)) http.Han
 			return
 		}
 		if !token.Valid {
+			fmt.Println("token invalid")
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
