@@ -72,7 +72,6 @@ export default {
           this.up = response.data.sides[(playerIndex+2)%4];
           this.right = response.data.sides[(playerIndex+3)%4];
           this.center = response.data.center;
-          this.ready = true;
         })
       }
     },
@@ -81,16 +80,14 @@ export default {
       this.axios.post(this.backend+"/login", {
         "login": this.player,
         "password": this.password,
-      }).then(response => {
+      }).then(() => {
         this.logged = true;
-        console.log(response)
       })
     }
   },
   data() {
     let nullSide = [];
     return {
-      ready: false,
       room: null,
       down: nullSide,
       up: nullSide,
@@ -101,7 +98,7 @@ export default {
       password: "",
       logged: false,
       backend: process.env.NODE_ENV === 'development'
-        ? 'http://localhost:8090'
+        ? 'http://0.0.0.0:8090'
         : 'http://52.91.188.222:8090',
       axios: axios.create({
         withCredentials: true

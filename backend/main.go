@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
+	"github.com/gorilla/handlers"
 	"github.com/rs/cors"
 )
 
@@ -176,8 +178,6 @@ func room(w http.ResponseWriter, request *http.Request, playerName string) {
 		Status: RoomStatusPlaying,
 	}
 
-	
-
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(result); err != nil {
@@ -190,15 +190,15 @@ func main() {
 
 	mux.Handle("/hello", http.HandlerFunc(hello))
 	mux.Handle("/login", http.HandlerFunc(login))
-	mux.Handle("/room", loginRequired(room))
+	mux.Handle("/room", handlers.LoggingHandler(os.Stdout, loginRequired(room)))
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{
+		AllowedOrigins: []string{
 			"http://0.0.0.0", "http://0.0.0.0:8080",
 			"http://52.91.188.222/", "https://52.91.188.222/",
 		},
 		AllowCredentials: true,
-		Debug: false,
+		Debug:            false,
 	})
 	log.Fatal(http.ListenAndServe(":8090", c.Handler(mux)))
 }
