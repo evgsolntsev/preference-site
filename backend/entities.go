@@ -21,7 +21,7 @@ const (
 )
 
 var (
-	AllSuits = []Suit{SuitSpades, SuitDiamonds, SuitHearts, SuitClubs}
+	AllSuits = []Suit{SuitSpades, SuitDiamonds, SuitClubs, SuitHearts}
 	AllRanks = []string{"7", "8", "9", "10", "J", "Q", "K", "A"}
 )
 
