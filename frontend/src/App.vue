@@ -33,8 +33,8 @@
     <div v-else>Welcome, {{ player }}!</div>
   </div>
   <div class="buttons">
-    <template v-if="!logged">
-      <button @click="shuffle"> Submit </button>
+    <template v-if="logged">
+      <button @click="shuffle"> Shuffle </button>
     </template>
   </div>
 </div>
