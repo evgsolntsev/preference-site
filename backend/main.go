@@ -8,157 +8,23 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/rs/cors"
+	"github.com/globalsign/mgo"
 )
 
-func room(w http.ResponseWriter, request *http.Request, playerName string) {
-	result := Room{
-		Sides: []RoomSideInfo{{
-			Name: "evgsol",
-			Cards: []Card{{
-				Suit: SuitDiamonds,
-				Rank: "Q",
-			}, {
+type Handler struct {
+	roomManager *RoomManager
+}
 
-				Suit: SuitDiamonds,
-				Rank: "A",
-			}, {
+func NewHandler(m *RoomManager) *Handler {
+	return &Handler{
+		roomManager: m,
+	}
+}
 
-				Suit: SuitSpades,
-				Rank: "7",
-			}},
-		}, {
-			Name: "miracle",
-			Cards: []Card{{
-
-				Suit: SuitDiamonds,
-				Rank: "J",
-			}, {
-
-				Suit: SuitDiamonds,
-				Rank: "A",
-			}, {
-
-				Suit: SuitClubs,
-				Rank: "J",
-			}},
-		}, {
-			Name: "solarka",
-			Cards: []Card{{
-
-				Suit: SuitDiamonds,
-				Rank: "Q",
-			}, {
-
-				Suit: SuitDiamonds,
-				Rank: "K",
-			}, {
-
-				Suit: SuitSpades,
-				Rank: "7",
-			}, {
-
-				Suit: SuitDiamonds,
-				Rank: "Q",
-			}, {
-
-				Suit: SuitDiamonds,
-				Rank: "K",
-			}, {
-
-				Suit: SuitSpades,
-				Rank: "7",
-			}, {
-
-				Suit: SuitDiamonds,
-				Rank: "Q",
-			}, {
-
-				Suit: SuitDiamonds,
-				Rank: "K",
-			}, {
-
-				Suit: SuitSpades,
-				Rank: "7",
-			}, {
-
-				Suit: SuitDiamonds,
-				Rank: "Q",
-			}, {
-
-				Suit: SuitDiamonds,
-				Rank: "K",
-			}, {
-
-				Suit: SuitSpades,
-				Rank: "7",
-			}},
-		}, {
-			Name: "psmirnov",
-			Cards: []Card{{
-
-				Suit: SuitClubs,
-				Rank: "Q",
-			}, {
-
-				Suit: SuitClubs,
-				Rank: "K",
-			}, {
-
-				Suit: SuitClubs,
-				Rank: "A",
-			}, {
-
-				Suit: SuitClubs,
-				Rank: "Q",
-			}, {
-
-				Suit: SuitClubs,
-				Rank: "K",
-			}, {
-
-				Suit: SuitClubs,
-				Rank: "A",
-			}, {
-
-				Suit: SuitClubs,
-				Rank: "Q",
-			}, {
-
-				Suit: SuitClubs,
-				Rank: "K",
-			}, {
-
-				Suit: SuitClubs,
-				Rank: "A",
-			}, {
-
-				Suit: SuitClubs,
-				Rank: "Q",
-			}, {
-
-				Suit: SuitClubs,
-				Rank: "K",
-			}, {
-
-				Suit: SuitClubs,
-				Rank: "A",
-			}},
-		}},
-		Center: []CenterCardInfo{{
-			Card: Card{
-
-				Suit: SuitSpades,
-				Rank: "A",
-			},
-			Player: "evgsol",
-		}, {
-			Card: Card{
-				Suit: SuitHearts,
-				Rank: "10",
-			},
-			Player: "miracle",
-		}},
-		Status: RoomStatusPlaying,
+func (h *Handler) Room(w http.ResponseWriter, request *http.Request, playerName string) {
+	result, err := h.roomManager.GetOneForPlayer(request.Context(), playerName)
+	if err != nil {
+		panic(err)
 	}
 
 	for i, _ := range result.Sides {
@@ -177,11 +43,29 @@ func room(w http.ResponseWriter, request *http.Request, playerName string) {
 	}
 }
 
+var (
+	CONFIGFILE = "conf.json"
+	Config     Configuration
+)
+
 func main() {
+	if err := Config.Init(CONFIGFILE); err != nil {
+		log.Fatal(err)
+	}
+
+	session, err := mgo.Dial(Config.MongoURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	roomDAO := NewRoomDAO(session)
+	roomManager := NewRoomManager(roomDAO)
+	handler := NewHandler(roomManager)
+
 	mux := http.NewServeMux()
 
 	mux.Handle("/login", handlers.LoggingHandler(os.Stdout, http.HandlerFunc(login)))
-	mux.Handle("/room", handlers.LoggingHandler(os.Stdout, loginRequired(room)))
+	mux.Handle("/room", handlers.LoggingHandler(os.Stdout, loginRequired(handler.Room)))
 
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{
