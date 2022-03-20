@@ -32,6 +32,11 @@
     </template>
     <div v-else>Welcome, {{ player }}!</div>
   </div>
+  <div class="buttons">
+    <template v-if="!logged">
+      <button @click="shuffle"> Submit </button>
+    </template>
+  </div>
 </div>
 </template>
 
@@ -74,6 +79,11 @@ export default {
           this.center = response.data.center;
         })
       }
+    },
+    shuffle() {
+        this.axios.post(this.backend+"/shuffle").then(() => {
+          this.fetchData()
+        })
     },
     login() {
       console.log("trying to log in with '"+this.player+"' and '"+this.password+"'");
@@ -203,6 +213,12 @@ div.outer {
 
 .login {
     grid-column: 3;
+    grid-row: 4;
+    border: 1px solid;
+}
+
+.buttons {
+    grid-column: 2;
     grid-row: 4;
     border: 1px solid;
 }
