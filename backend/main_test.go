@@ -91,7 +91,7 @@ func TestRoomHandler(t *testing.T) {
 	require.NoError(t, err)
 
 	manager := NewRoomManager(dao)
-	handler := NewHandler(manager)
+	handler := NewController(manager)
 
 	req := httptest.NewRequest(http.MethodGet, "/room", nil)
 	w := httptest.NewRecorder()

@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
+	"math/rand"
+	"sort"
 
 	"github.com/globalsign/mgo"
 	"go.mongodb.org/mongo-driver/bson"
@@ -44,12 +47,16 @@ func (d *RoomDAO) Insert(ctx context.Context, room *Room) (*Room, error) {
 	return room, nil
 }
 
+func (d *RoomDAO) Update(ctx context.Context, room *Room) error {
+	return d.collection.UpdateId(room.ID, room)
+}
+
 func (d *RoomDAO) RemoveAll(ctx context.Context) error {
 	_, err := d.collection.RemoveAll(bson.M{})
 	return err
 }
 
-type RoomManager struct{
+type RoomManager struct {
 	dao *RoomDAO
 }
 
@@ -61,4 +68,60 @@ func NewRoomManager(dao *RoomDAO) *RoomManager {
 
 func (m *RoomManager) GetOneForPlayer(ctx context.Context, playerName string) (*Room, error) {
 	return m.dao.FindOneByPlayer(ctx, playerName)
+}
+
+func (m *RoomManager) Shuffle(ctx context.Context, playerName string) error {
+	room, err := m.dao.FindOneByPlayer(ctx, playerName)
+	if err != nil {
+		return err
+	}
+
+	if room.PlayersCount < 3 || room.PlayersCount > 4 {
+		return errors.New("wrong players count")
+	}
+
+	var allCards []Card
+	for _, s := range AllSuits {
+		for _, r := range AllRanks {
+			allCards = append(allCards, Card{
+				Suit: s,
+				Rank: r,
+			})
+		}
+	}
+
+	rand.Shuffle(len(allCards), func(i, j int) { allCards[i], allCards[j] = allCards[j], allCards[i] })
+
+	playerIndex := room.PlayerSideIndex(playerName)
+	buypackIndex := 0
+	var playersIndexes []int
+	if room.PlayersCount == 3 {
+		for i := 0; i < 4; i++ {
+			index := (playerIndex + i) % 4
+			if room.Sides[index].Name == EmptySidePlayerName {
+				buypackIndex = index
+			} else {
+				playersIndexes = append(playersIndexes, index)
+			}
+		}
+	} else {
+		buypackIndex = playerIndex
+		playersIndexes = []int{(playerIndex + 1) % 4, (playerIndex + 2) % 4, (playerIndex + 3) % 4}
+	}
+
+	room.Status = RoomStatusCreated
+	room.Sides[buypackIndex].Cards = allCards[:2]
+	room.Sides[buypackIndex].Tricks = 0
+	room.Sides[buypackIndex].Open = false
+	room.Center = nil
+	for i := 0; i < 3; i++ {
+		room.Sides[playersIndexes[i]].Cards = allCards[2+i*8 : 2+(i+1)*8]
+		sort.Slice(room.Sides[playersIndexes[i]].Cards, func(l, r int) bool {
+			return room.Sides[playersIndexes[i]].Cards[l].Less(room.Sides[playersIndexes[i]].Cards[r])
+		})
+		room.Sides[playersIndexes[i]].Tricks = 0
+		room.Sides[playersIndexes[i]].Open = false
+	}
+
+	return m.dao.Update(ctx, room)
 }
