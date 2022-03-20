@@ -115,7 +115,7 @@ func (m *RoomManager) Shuffle(ctx context.Context, playerName string) error {
 	room.Sides[buypackIndex].Open = false
 	room.Center = nil
 	for i := 0; i < 3; i++ {
-		room.Sides[playersIndexes[i]].Cards = allCards[2+i*8 : 2+(i+1)*8]
+		room.Sides[playersIndexes[i]].Cards = allCards[2+i*10 : 2+(i+1)*10]
 		sort.Slice(room.Sides[playersIndexes[i]].Cards, func(l, r int) bool {
 			return room.Sides[playersIndexes[i]].Cards[l].Less(room.Sides[playersIndexes[i]].Cards[r])
 		})
