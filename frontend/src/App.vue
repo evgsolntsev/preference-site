@@ -34,7 +34,7 @@
   </div>
   <div class="buttons">
     <template v-if="logged">
-      <template v-if="status == 'created'">
+      <template v-if="status == 0">
         <button @click="openBuypack">Open buypack</button>
       </template>
       <button @click="shuffle"> Shuffle </button>
@@ -89,7 +89,7 @@ export default {
           this.fetchData()
         })
     },
-    shuffle() {
+    openBuypack() {
         this.axios.post(this.backend+"/openBuypack").then(() => {
           this.fetchData()
         })
