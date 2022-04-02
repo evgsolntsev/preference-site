@@ -58,7 +58,7 @@ func decorate(f func(*http.Request, string) (interface{}, error)) func(http.Resp
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
 		if err == nil {
-			w.WriteHeader(http.StatusBadRequest)
+			w.WriteHeader(http.StatusOK)
 			if err := json.NewEncoder(w).Encode(result); err != nil {
 				panic(err)
 			}
