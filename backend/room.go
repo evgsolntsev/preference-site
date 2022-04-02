@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/rand"
 	"sort"
 
@@ -24,6 +25,15 @@ func NewRoomDAO(session *mgo.Session) *RoomDAO {
 	return &RoomDAO{
 		collection: session.DB(DatabaseName).C(CollectionName),
 	}
+}
+
+func (d *RoomDAO) FindOneByID(ctx context.Context, roomID string) (*Room, error) {
+	var result Room
+	if err := d.collection.Find(bson.M{"_id": roomID}).One(&result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
 }
 
 func (d *RoomDAO) FindOneByPlayer(ctx context.Context, playerName string) (*Room, error) {
@@ -51,6 +61,18 @@ func (d *RoomDAO) Update(ctx context.Context, room *Room) error {
 	return d.collection.UpdateId(room.ID, room)
 }
 
+func (d *RoomDAO) OpenBuypack(ctx context.Context, roomID string, buypackIndex int) error {
+	return d.collection.Update(bson.M{
+		"_id":    roomID,
+		"status": RoomStatusCreated,
+	}, bson.M{
+		"$set": bson.M{
+			"status": RoomStatusBuypackOpened,
+			fmt.Sprintf("sides.%d.open", buypackIndex): true,
+		},
+	})
+}
+
 func (d *RoomDAO) RemoveAll(ctx context.Context) error {
 	_, err := d.collection.RemoveAll(bson.M{})
 	return err
@@ -70,7 +92,7 @@ func (m *RoomManager) GetOneForPlayer(ctx context.Context, playerName string) (*
 	return m.dao.FindOneByPlayer(ctx, playerName)
 }
 
-func (m *RoomManager) Shuffle(ctx context.Context, playerName string) error {
+func (m *RoomManager) Shuffle(ctx context.Context, roomID, playerName string) error {
 	room, err := m.dao.FindOneByPlayer(ctx, playerName)
 	if err != nil {
 		return err
@@ -124,4 +146,28 @@ func (m *RoomManager) Shuffle(ctx context.Context, playerName string) error {
 	}
 
 	return m.dao.Update(ctx, room)
+}
+
+func (m *RoomManager) OpenBuypack(ctx context.Context, roomID string) error {
+	room, err := m.dao.FindOneByID(ctx, roomID)
+	if err != nil {
+		return err
+	}
+
+	if room.Status != RoomStatusCreated {
+		return errors.New("wrong room status")
+	}
+
+	buypackIndex := -1
+	for i, side := range room.Sides {
+		if len(side.Cards) == 2 {
+			buypackIndex = i
+		}
+	}
+
+	if buypackIndex == -1 {
+		return errors.New("bad shuffling")
+	}
+
+	return m.dao.OpenBuypack(ctx, roomID, buypackIndex)
 }

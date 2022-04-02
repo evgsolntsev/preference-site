@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -95,9 +95,9 @@ func TestRoomHandler(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/room", nil)
 	w := httptest.NewRecorder()
-	handler.Room(w, req, "evgsol")
-	res := w.Result()
-	defer res.Body.Close()
+
+	result, err := handler.Room(w, req, "evgsol")
+	require.NoError(t, err)
 
 	expected := fmt.Sprintf(`{
             "id": "%v",
@@ -172,9 +172,12 @@ func TestRoomHandler(t *testing.T) {
                 "player": "miracle",
                 "card": {"suit": "H", "rank": "10"}
             }],
-            "status": 1
+            "status": 1,
+            "playersCount": 0
         }`, stored.ID)
-	data, err := ioutil.ReadAll(res.Body)
+
+	res, err := json.Marshal(result)
 	require.NoError(t, err)
-	assert.JSONEq(t, expected, string(data))
+
+	assert.JSONEq(t, expected, string(res))
 }

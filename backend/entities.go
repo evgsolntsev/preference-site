@@ -7,8 +7,11 @@ type Player struct {
 type RoomStatus int
 
 const (
-	RoomStatusCreated RoomStatus = 0
-	RoomStatusPlaying RoomStatus = 1
+	RoomStatusCreated       RoomStatus = 0
+	RoomStatusPlaying       RoomStatus = 1
+	RoomStatusBuypackOpened RoomStatus = 2
+	RoomStatusBuypackTaken  RoomStatus = 3
+	RoomStatusAllPass       RoomStatus = 3
 )
 
 type Suit string

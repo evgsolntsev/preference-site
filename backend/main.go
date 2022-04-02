@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"math/rand"
 	"net/http"
@@ -36,8 +37,9 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.Handle("/login", handlers.LoggingHandler(os.Stdout, http.HandlerFunc(login)))
-	mux.Handle("/room", handlers.LoggingHandler(os.Stdout, loginRequired(controller.Room)))
-	mux.Handle("/shuffle", handlers.LoggingHandler(os.Stdout, loginRequired(controller.Shuffle)))
+	mux.Handle("/room", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.Room))))
+	mux.Handle("/shuffle", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.Shuffle))))
+	mux.Handle("/openBuypack", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.OpenBuypack))))
 
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{
@@ -48,4 +50,21 @@ func main() {
 		Debug:            false,
 	})
 	log.Fatal(http.ListenAndServe(":8090", c.Handler(mux)))
+}
+
+func decorate(f func(*http.Request, string) (interface{}, error)) func(http.ResponseWriter, *http.Request, string) {
+	return func(w http.ResponseWriter, r *http.Request, s string) {
+		result, err := f(r, s)
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+		if err == nil {
+			w.WriteHeader(http.StatusBadRequest)
+			if err := json.NewEncoder(w).Encode(result); err != nil {
+				panic(err)
+			}
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+		}
+	}
 }

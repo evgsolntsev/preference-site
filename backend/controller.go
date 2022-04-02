@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"net/http"
 )
 
@@ -15,10 +14,10 @@ func NewController(m *RoomManager) *Controller {
 	}
 }
 
-func (c *Controller) Room(w http.ResponseWriter, request *http.Request, playerName string) {
+func (c *Controller) Room(request *http.Request, playerName string) (interface{}, error) {
 	result, err := c.roomManager.GetOneForPlayer(request.Context(), playerName)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	for i, _ := range result.Sides {
@@ -30,17 +29,31 @@ func (c *Controller) Room(w http.ResponseWriter, request *http.Request, playerNa
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(result); err != nil {
-		panic(err)
-	}
+	return result, nil
 }
 
-func (c *Controller) Shuffle(w http.ResponseWriter, request *http.Request, playerName string) {
-	if err := c.roomManager.Shuffle(request.Context(), playerName); err != nil {
-		panic(err)
+func (c *Controller) Shuffle(request *http.Request, playerName string) (interface{}, error) {
+	room, err := c.roomManager.GetOneForPlayer(request.Context(), playerName)
+	if err != nil {
+		return nil, err
 	}
 
-	w.WriteHeader(http.StatusOK)
+	if err := c.roomManager.Shuffle(request.Context(), room.ID, playerName); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func (c *Controller) OpenBuypack(request *http.Request, playerName string) (interface{}, error) {
+	room, err := c.roomManager.GetOneForPlayer(request.Context(), playerName)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.roomManager.OpenBuypack(request.Context(), room.ID); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }

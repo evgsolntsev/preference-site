@@ -34,6 +34,9 @@
   </div>
   <div class="buttons">
     <template v-if="logged">
+      <template v-if="status == 'created'">
+        <button @click="openBuypack">Open buypack</button>
+      </template>
       <button @click="shuffle"> Shuffle </button>
     </template>
   </div>
@@ -77,11 +80,17 @@ export default {
           this.up = response.data.sides[(playerIndex+2)%4];
           this.right = response.data.sides[(playerIndex+3)%4];
           this.center = response.data.center;
+          this.status = response.data.status;
         })
       }
     },
     shuffle() {
         this.axios.post(this.backend+"/shuffle").then(() => {
+          this.fetchData()
+        })
+    },
+    shuffle() {
+        this.axios.post(this.backend+"/openBuypack").then(() => {
           this.fetchData()
         })
     },
@@ -104,6 +113,7 @@ export default {
       left: nullSide,
       right: nullSide,
       center: nullSide,
+      status: "",
       player: "",
       password: "",
       logged: false,
