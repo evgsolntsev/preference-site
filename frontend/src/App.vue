@@ -34,7 +34,7 @@
   </div>
   <div class="buttons">
     <template v-if="logged">
-      <template v-if="status == 0">
+      <template v-if="status === 0">
         <button @click="openBuypack">Open buypack</button>
       </template>
       <button @click="shuffle"> Shuffle </button>
