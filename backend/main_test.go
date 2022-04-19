@@ -94,9 +94,7 @@ func TestRoomHandler(t *testing.T) {
 	handler := NewController(manager)
 
 	req := httptest.NewRequest(http.MethodGet, "/room", nil)
-	w := httptest.NewRecorder()
-
-	result, err := handler.Room(w, req, "evgsol")
+	result, err := handler.Room(req, "evgsol")
 	require.NoError(t, err)
 
 	expected := fmt.Sprintf(`{

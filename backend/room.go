@@ -73,6 +73,24 @@ func (d *RoomDAO) OpenBuypack(ctx context.Context, roomID string, buypackIndex i
 	})
 }
 
+func (d *RoomDAO) TakeBuypack(
+	ctx context.Context,
+	roomID string,
+	buypackIndex, playerIndex int,
+	newPlayerCards []Card,
+) error {
+	return d.collection.Update(bson.M{
+		"_id":    roomID,
+		"status": RoomStatusBuypackOpened,
+	}, bson.M{
+		"$set": bson.M{
+			"status": RoomStatusBuypackTaken,
+			fmt.Sprintf("sides.%d.cards", buypackIndex): []Card{},
+			fmt.Sprintf("sides.%d.cards", playerIndex):  newPlayerCards,
+		},
+	})
+}
+
 func (d *RoomDAO) RemoveAll(ctx context.Context) error {
 	_, err := d.collection.RemoveAll(bson.M{})
 	return err
@@ -170,4 +188,40 @@ func (m *RoomManager) OpenBuypack(ctx context.Context, roomID string) error {
 	}
 
 	return m.dao.OpenBuypack(ctx, roomID, buypackIndex)
+}
+
+func (m *RoomManager) TakeBuypack(ctx context.Context, roomID, playerName string) error {
+	room, err := m.dao.FindOneByID(ctx, roomID)
+	if err != nil {
+		return err
+	}
+
+	if room.Status != RoomStatusBuypackOpened {
+		return errors.New("wrong room status")
+	}
+
+	buypackIndex := -1
+	playerIndex := -1
+	for i, side := range room.Sides {
+		if len(side.Cards) == 2 {
+			buypackIndex = i
+		}
+		if side.Name == playerName {
+			playerIndex = i
+		}
+	}
+
+	if buypackIndex == -1 {
+		return errors.New("bad shuffling")
+	}
+	if playerIndex == -1 {
+		return errors.New("wrong player name")
+	}
+
+	cards := append(room.Sides[playerIndex].Cards, room.Sides[buypackIndex].Cards...)
+	sort.Slice(cards, func(l, r int) bool {
+		return cards[l].Less(cards[r])
+	})
+
+	return m.dao.TakeBuypack(ctx, roomID, buypackIndex, playerIndex, cards)
 }

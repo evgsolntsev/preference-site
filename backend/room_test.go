@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/globalsign/mgo"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -67,10 +67,10 @@ func (s *RoomSuite) TestRoomManagerOpenBuypackOK() {
 		}, {
 			Name: "solarka",
 		}, {
-			Name: "lol",
+			Name:  "lol",
 			Cards: []Card{{}, {}},
 		}, {
-			Name: "kek",			
+			Name: "kek",
 		}},
 		Status: RoomStatusCreated,
 	})
@@ -93,5 +93,47 @@ func (s *RoomSuite) TestRoomManagerOpenBuypackWrongStatus() {
 	require.NoError(s.T(), err)
 
 	err = s.Manager.OpenBuypack(s.Ctx, room.ID)
+	assert.Error(s.T(), err)
+}
+
+func (s *RoomSuite) TestRoomManagerTakeBuypackOK() {
+	room, err := s.DAO.Insert(s.Ctx, &Room{
+		Sides: []RoomSideInfo{{
+			Name:  "evgsol",
+			Cards: []Card{{SuitSpades, "A"}},
+		}, {
+			Name:  "solarka",
+			Cards: []Card{{SuitDiamonds, "A"}},
+		}, {
+			Name:  "lol",
+			Cards: []Card{{SuitClubs, "7"}, {SuitClubs, "8"}},
+		}, {
+			Name:  "kek",
+			Cards: []Card{{SuitHearts, "A"}},
+		}},
+		Status: RoomStatusBuypackOpened,
+	})
+	require.NoError(s.T(), err)
+
+	err = s.Manager.TakeBuypack(s.Ctx, room.ID, "evgsol")
+	require.NoError(s.T(), err)
+
+	updatedRoom, err := s.DAO.FindOneByID(s.Ctx, room.ID)
+	require.NoError(s.T(), err)
+
+	assert.Equal(s.T(), RoomStatusBuypackTaken, updatedRoom.Status)
+	assert.Equal(s.T(), []Card{}, updatedRoom.Sides[2].Cards)
+	assert.Equal(s.T(), []Card{
+		{SuitSpades, "A"}, {SuitClubs, "7"}, {SuitClubs, "8"},
+	}, updatedRoom.Sides[0].Cards)
+}
+
+func (s *RoomSuite) TestRoomManagerTakeBuypackWrongStatus() {
+	room, err := s.DAO.Insert(s.Ctx, &Room{
+		Status: RoomStatusBuypackTaken,
+	})
+	require.NoError(s.T(), err)
+
+	err = s.Manager.TakeBuypack(s.Ctx, room.ID, "lol")
 	assert.Error(s.T(), err)
 }

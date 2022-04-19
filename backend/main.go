@@ -40,6 +40,7 @@ func main() {
 	mux.Handle("/room", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.Room))))
 	mux.Handle("/shuffle", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.Shuffle))))
 	mux.Handle("/openBuypack", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.OpenBuypack))))
+	mux.Handle("/takeBuypack", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.TakeBuypack))))
 
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{

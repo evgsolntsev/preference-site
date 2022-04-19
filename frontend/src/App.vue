@@ -37,7 +37,10 @@
       <template v-if="status === 0">
         <button @click="openBuypack">Open buypack</button>
       </template>
-      <button @click="shuffle"> Shuffle </button>
+      <template v-if="status === 2">
+        <button @click="takeBuypack">Take buypack</button>
+      </template>
+      <button @click="shuffle">Shuffle</button>
     </template>
   </div>
 </div>
@@ -91,6 +94,11 @@ export default {
     },
     openBuypack() {
         this.axios.post(this.backend+"/openBuypack").then(() => {
+          this.fetchData()
+        })
+    },
+    takeBuypack() {
+        this.axios.post(this.backend+"/takeBuypack").then(() => {
           this.fetchData()
         })
     },

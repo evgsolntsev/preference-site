@@ -57,3 +57,16 @@ func (c *Controller) OpenBuypack(request *http.Request, playerName string) (inte
 
 	return nil, nil
 }
+
+func (c *Controller) TakeBuypack(request *http.Request, playerName string) (interface{}, error) {
+	room, err := c.roomManager.GetOneForPlayer(request.Context(), playerName)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.roomManager.TakeBuypack(request.Context(), room.ID, playerName); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
