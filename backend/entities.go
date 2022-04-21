@@ -11,7 +11,7 @@ const (
 	RoomStatusPlaying       RoomStatus = 1
 	RoomStatusBuypackOpened RoomStatus = 2
 	RoomStatusBuypackTaken  RoomStatus = 3
-	RoomStatusAllPass       RoomStatus = 3
+	RoomStatusAllPass       RoomStatus = 4
 )
 
 type Suit string

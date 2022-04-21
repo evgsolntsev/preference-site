@@ -137,3 +137,56 @@ func (s *RoomSuite) TestRoomManagerTakeBuypackWrongStatus() {
 	err = s.Manager.TakeBuypack(s.Ctx, room.ID, "lol")
 	assert.Error(s.T(), err)
 }
+
+func (s *RoomSuite) TestRoomManagerDrop() {
+	room, err := s.DAO.Insert(s.Ctx, &Room{
+		Sides: []RoomSideInfo{{
+			Name:  "evgsol",
+			Cards: []Card{{SuitSpades, "A"}},
+		}, {
+			Name:  "solarka",
+			Cards: []Card{{SuitDiamonds, "A"}},
+		}, {
+			Name: "lol",
+			Cards: []Card{
+				{SuitClubs, "7"},
+				{SuitClubs, "8"},
+				{SuitClubs, "9"},
+				{SuitClubs, "10"},
+				{SuitClubs, "J"},
+				{SuitClubs, "Q"},
+				{SuitClubs, "K"},
+				{SuitClubs, "A"},
+				{SuitHearts, "7"},
+				{SuitHearts, "8"},
+				{SuitHearts, "9"},
+				{SuitHearts, "10"},
+			},
+		}, {
+			Name:  "kek",
+			Cards: []Card{{SuitHearts, "A"}},
+		}},
+		Status: RoomStatusBuypackTaken,
+	})
+	require.NoError(s.T(), err)
+
+	err = s.Manager.Drop(s.Ctx, room.ID, "lol", []int{8, 9})
+	require.NoError(s.T(), err)
+
+	updatedRoom, err := s.DAO.FindOneByID(s.Ctx, room.ID)
+	require.NoError(s.T(), err)
+
+	assert.Equal(s.T(), RoomStatusPlaying, updatedRoom.Status)
+	assert.Equal(s.T(), []Card{
+		{SuitClubs, "7"},
+		{SuitClubs, "8"},
+		{SuitClubs, "9"},
+		{SuitClubs, "10"},
+		{SuitClubs, "J"},
+		{SuitClubs, "Q"},
+		{SuitClubs, "K"},
+		{SuitClubs, "A"},
+		{SuitHearts, "9"},
+		{SuitHearts, "10"},
+	}, updatedRoom.Sides[2].Cards)
+}

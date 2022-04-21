@@ -16,7 +16,7 @@
     <img v-for="(cardInfo, index) in right.cards" :key="index" class="horizontal" :src="getImgUrl(cardInfo, 'CC')" :style="getGridRowStyle(index)">
   </div>
   <div class="down grid-container">
-    <img v-for="(cardInfo, index) in down.cards" :key="index" class="vertical" :src="getImgUrl(cardInfo, '')" :style="getGridColumnStyle(index)">
+    <img v-for="(cardInfo, index) in down.cards" :key="index" :class="'vertical '+isSelected(index)+' '+isHover(index)" :src="getImgUrl(cardInfo, '')" :style="getGridColumnStyle(index)" @mouseover="hovered[index]=true" @mouseleave="hovered[index]=false" @click="selected[index]=!selected[index]">
   </div>
   <div class="players">
     <div> Left player: {{ playerDescription(left) }}</div>
@@ -40,6 +40,9 @@
       <template v-if="status === 2">
         <button @click="takeBuypack">Take buypack</button>
       </template>
+      <template v-if="status === 3">
+        <button @click="drop" :disabled="isDropDisabled()">Drop</button>
+      </template>
       <button @click="shuffle">Shuffle</button>
     </template>
   </div>
@@ -51,6 +54,27 @@ import axios from 'axios';
 export default {
   name: 'App',
   methods: {
+    isDropDisabled() {
+        var count = 0;
+        for (let i = 0; i < this.selected.length; i++) {
+            if (this.selected[i]) {
+                count += 1;
+            }
+        }
+        return count != 2
+    },
+    isHover(index) {
+        if (this.hovered[index]) {
+            return 'hovered'
+        }
+        return ''
+    },
+    isSelected(index) {
+        if (this.selected[index]) {
+            return 'selected'
+        }
+        return ''
+    },
     getGridColumnStyle(index) {
         return 'grid-row: 1; grid-column: '+(index+1)+' / span 2'
     },
@@ -87,19 +111,35 @@ export default {
         })
       }
     },
+    updateAll() {
+        this.fetchData()
+        this.selected = [false, false, false, false, false, false, false, false, false, false, false, false]
+        this.hovered = [false, false, false, false, false, false, false, false, false, false, false, false]
+    },
     shuffle() {
         this.axios.post(this.backend+"/shuffle").then(() => {
-          this.fetchData()
+            this.updateAll()
         })
     },
     openBuypack() {
         this.axios.post(this.backend+"/openBuypack").then(() => {
-          this.fetchData()
+            this.updateAll()
         })
     },
     takeBuypack() {
         this.axios.post(this.backend+"/takeBuypack").then(() => {
-          this.fetchData()
+            this.updateAll()
+        })
+    },
+    drop() {
+        var indexes = [];
+        for (let i = 0; i < this.selected.length; i++) {
+            if (this.selected[i]) {
+                indexes.push(i);
+            }
+        }
+        this.axios.post(this.backend+"/drop", {"indexes": indexes}).then(() => {
+            this.updateAll()
         })
     },
     login() {
@@ -125,6 +165,8 @@ export default {
       player: "",
       password: "",
       logged: false,
+      selected: [false, false, false, false, false, false, false, false, false, false, false, false],
+      hovered: [false, false, false, false, false, false, false, false, false, false, false, false],
       backend: process.env.NODE_ENV === 'development'
         ? 'http://0.0.0.0:8090'
         : 'http://52.91.188.222:8090',
@@ -178,6 +220,16 @@ img {
 .played {
     max-height: 50%;
     min-height: 50%;
+}
+
+.hovered {
+    z-index: 100;
+}
+
+.selected {
+    z-index: 50;
+    border-style: outset;
+    border: 3px solid blue;
 }
 
 .horizontal {

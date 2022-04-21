@@ -91,6 +91,23 @@ func (d *RoomDAO) TakeBuypack(
 	})
 }
 
+func (d *RoomDAO) Drop(
+	ctx context.Context,
+	roomID string,
+	playerIndex int,
+	newPlayerCards []Card,
+) error {
+	return d.collection.Update(bson.M{
+		"_id":    roomID,
+		"status": RoomStatusBuypackTaken,
+	}, bson.M{
+		"$set": bson.M{
+			"status": RoomStatusPlaying,
+			fmt.Sprintf("sides.%d.cards", playerIndex):  newPlayerCards,
+		},
+	})
+}
+
 func (d *RoomDAO) RemoveAll(ctx context.Context) error {
 	_, err := d.collection.RemoveAll(bson.M{})
 	return err
@@ -224,4 +241,45 @@ func (m *RoomManager) TakeBuypack(ctx context.Context, roomID, playerName string
 	})
 
 	return m.dao.TakeBuypack(ctx, roomID, buypackIndex, playerIndex, cards)
+}
+
+func (m *RoomManager) Drop(ctx context.Context, roomID, playerName string, indexes []int) error {
+	room, err := m.dao.FindOneByID(ctx, roomID)
+	if err != nil {
+		return err
+	}
+
+	if room.Status != RoomStatusBuypackTaken {
+		return errors.New("wrong room status")
+	}
+
+	playerIndex := -1
+	for i, side := range room.Sides {
+		if side.Name == playerName {
+			playerIndex = i
+		}
+	}
+
+	if playerIndex == -1 {
+		return errors.New("wrong player name")
+	}
+
+	if len(room.Sides[playerIndex].Cards) != 12 {
+		return errors.New("wrong player cards length")
+	}
+
+	newCards := []Card{}
+	for i, c := range room.Sides[playerIndex].Cards {
+		good := true
+		for _, index := range indexes {
+			if i == index {
+				good = false
+			}
+		}
+		if good {
+			newCards = append(newCards, c)
+		}
+	}
+
+	return m.dao.Drop(ctx, roomID, playerIndex, newCards)
 }
