@@ -88,6 +88,7 @@ type Room struct {
 	ID           string           `json:"id" bson:"_id"`
 	Sides        []RoomSideInfo   `json:"sides" bson:"sides"`
 	Center       []CenterCardInfo `json:"center" bson:"center"`
+	LastTrick    []CenterCardInfo `json:"lastTrick" bson:"lastTrick"`
 	Status       RoomStatus       `json:"status" bson:"status"`
 	PlayersCount int              `json:"playersCount" bson:"playersCount"`
 }

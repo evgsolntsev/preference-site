@@ -190,3 +190,102 @@ func (s *RoomSuite) TestRoomManagerDrop() {
 		{SuitHearts, "10"},
 	}, updatedRoom.Sides[2].Cards)
 }
+
+func (s *RoomSuite) TestRoomManagerMove() {
+	room, err := s.DAO.Insert(s.Ctx, &Room{
+		Sides: []RoomSideInfo{{
+			Name:  "evgsol",
+			Cards: []Card{{SuitSpades, "A"}},
+		}, {
+			Name:  "solarka",
+			Cards: []Card{{SuitDiamonds, "A"}},
+		}, {
+			Name: "lol",
+			Cards: []Card{
+				{SuitClubs, "7"},
+				{SuitClubs, "8"},
+			},
+		}, {
+			Name: "kek",
+		}},
+		Center: []CenterCardInfo{{
+			Card:   Card{SuitSpades, "K"},
+			Player: "evgsol",
+		}, {
+			Card:   Card{SuitSpades, "Q"},
+			Player: "solarka",
+		}},
+		Status: RoomStatusPlaying,
+	})
+	require.NoError(s.T(), err)
+
+	err = s.Manager.Move(s.Ctx, room.ID, "lol", 0)
+	require.NoError(s.T(), err)
+
+	updatedRoom, err := s.DAO.FindOneByID(s.Ctx, room.ID)
+	require.NoError(s.T(), err)
+
+	assert.Equal(s.T(), []Card{
+		{SuitClubs, "8"},
+	}, updatedRoom.Sides[2].Cards)
+	assert.Equal(s.T(), []CenterCardInfo{{
+		Card:   Card{SuitSpades, "K"},
+		Player: "evgsol",
+	}, {
+		Card:   Card{SuitSpades, "Q"},
+		Player: "solarka",
+	}, {
+		Card:   Card{SuitClubs, "7"},
+		Player: "lol",
+	}}, updatedRoom.Center)
+}
+
+func (s *RoomSuite) TestRoomManagerTakeTrick() {
+	room, err := s.DAO.Insert(s.Ctx, &Room{
+		Sides: []RoomSideInfo{{
+			Name:  "evgsol",
+			Cards: []Card{{SuitSpades, "A"}},
+		}, {
+			Name:  "solarka",
+			Cards: []Card{{SuitDiamonds, "A"}},
+		}, {
+			Name:   "lol",
+			Cards:  []Card{{SuitClubs, "7"}, {SuitClubs, "8"}},
+			Tricks: 5,
+		}, {
+			Name:  "kek",
+			Cards: []Card{{SuitHearts, "A"}},
+		}},
+		Center: []CenterCardInfo{{
+			Card:   Card{SuitSpades, "K"},
+			Player: "evgsol",
+		}, {
+			Card:   Card{SuitSpades, "Q"},
+			Player: "solarka",
+		}, {
+			Card:   Card{SuitClubs, "8"},
+			Player: "lol",
+		}},
+		Status: RoomStatusPlaying,
+	})
+	require.NoError(s.T(), err)
+
+	err = s.Manager.TakeTrick(s.Ctx, room.ID, "lol")
+	require.NoError(s.T(), err)
+
+	updatedRoom, err := s.DAO.FindOneByID(s.Ctx, room.ID)
+	require.NoError(s.T(), err)
+
+	assert.Equal(s.T(), []CenterCardInfo{}, updatedRoom.Center)
+	assert.Equal(s.T(), []CenterCardInfo{{
+		Card:   Card{SuitSpades, "K"},
+		Player: "evgsol",
+	}, {
+		Card:   Card{SuitSpades, "Q"},
+		Player: "solarka",
+	}, {
+		Card:   Card{SuitClubs, "8"},
+		Player: "lol",
+	}}, updatedRoom.LastTrick)
+	assert.Equal(s.T(), 6, updatedRoom.Sides[2].Tricks)
+}

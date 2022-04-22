@@ -19,10 +19,12 @@
     <img v-for="(cardInfo, index) in down.cards" :key="index" :class="'vertical '+isSelected(index)+' '+isHover(index)" :src="getImgUrl(cardInfo, '')" :style="getGridColumnStyle(index)" @mouseover="hovered[index]=true" @mouseleave="hovered[index]=false" @click="selected[index]=!selected[index]">
   </div>
   <div class="players">
-    <div> Left player: {{ playerDescription(left) }}</div>
-    <div> Up player: {{ playerDescription(up) }}</div>
-    <div> Right player: {{ playerDescription(right) }}</div>
-    <div> Down player (you): {{ playerDescription(down) }}</div>
+    <template v-if="logged">
+      <div> Left player: {{ playerDescription(left) }}</div>
+      <div> Up player: {{ playerDescription(up) }}</div>
+      <div> Right player: {{ playerDescription(right) }}</div>
+      <div> Down player (you): {{ playerDescription(down) }}</div>
+    </template>
   </div>
   <div class="login">
     <template v-if="!logged">
@@ -43,6 +45,10 @@
       <template v-if="status === 3">
         <button @click="drop" :disabled="isDropDisabled()">Drop</button>
       </template>
+      <template v-if="status === 1">
+        <button @click="move" :disabled="isMoveDisabled()">Make a move</button>
+        <button @click="takeTrick" :disabled="isTakeTrickDisabled()">Take a trick</button>
+      </template>
       <button @click="shuffle">Shuffle</button>
     </template>
   </div>
@@ -54,14 +60,26 @@ import axios from 'axios';
 export default {
   name: 'App',
   methods: {
-    isDropDisabled() {
-        var count = 0;
+    getSelected() {
+        var indexes = [];
         for (let i = 0; i < this.selected.length; i++) {
             if (this.selected[i]) {
-                count += 1;
+                indexes.push(i);
             }
         }
-        return count != 2
+        return indexes
+    },
+    countSelected() {
+        return this.getSelected().length
+    },
+    isDropDisabled() {
+        return this.countSelected() != 2
+    },
+    isMoveDisabled() {
+        return this.countSelected() != 1
+    },
+    isTakeTrickDisabled() {
+        return this.center.length < 3
     },
     isHover(index) {
         if (this.hovered[index]) {
@@ -86,7 +104,7 @@ export default {
         return images('./'+prefix+cardInfo.rank+cardInfo.suit+".png");
     },
     playerDescription(side) {
-        return side.name
+        return side.name+", "+side.tricks+" tricks"
     },
     fetchData() {
       if (this.logged) {
@@ -102,6 +120,15 @@ export default {
             console.log("player not found: "+response);
             return
           }
+          if (this.down.length != response.data.sides[playerIndex].length) {
+            this.dropSelected();
+          } else {
+            for (let i = 0; i < this.down.length; i++) {
+              if (this.down.cards[i] != response.data.sides[playerIndex].cards[i]) {
+                this.dropSelected();
+              }
+            }
+          }
           this.down = response.data.sides[playerIndex];
           this.left = response.data.sides[(playerIndex+1)%4];
           this.up = response.data.sides[(playerIndex+2)%4];
@@ -111,10 +138,13 @@ export default {
         })
       }
     },
-    updateAll() {
-        this.fetchData()
+    dropSelected() {
         this.selected = [false, false, false, false, false, false, false, false, false, false, false, false]
         this.hovered = [false, false, false, false, false, false, false, false, false, false, false, false]
+    },
+    updateAll() {
+        this.fetchData();
+        this.dropSelected()
     },
     shuffle() {
         this.axios.post(this.backend+"/shuffle").then(() => {
@@ -132,15 +162,21 @@ export default {
         })
     },
     drop() {
-        var indexes = [];
-        for (let i = 0; i < this.selected.length; i++) {
-            if (this.selected[i]) {
-                indexes.push(i);
-            }
-        }
+        var indexes = this.getSelected();
         this.axios.post(this.backend+"/drop", {"indexes": indexes}).then(() => {
             this.updateAll()
         })
+    },
+    move() {
+        var indexes = this.getSelected();
+        this.axios.post(this.backend+"/move", {"index": indexes[0]}).then(() => {
+            this.updateAll()
+        })
+    },
+    takeTrick() {
+        this.axios.post(this.backend+"/takeTrick").then(() => {
+            this.updateAll()
+        })        
     },
     login() {
       console.log("trying to log in with '"+this.player+"' and '"+this.password+"'");

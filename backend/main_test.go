@@ -171,6 +171,7 @@ func TestRoomHandler(t *testing.T) {
                 "card": {"suit": "H", "rank": "10"}
             }],
             "status": 1,
+            "lastTrick": [],
             "playersCount": 0
         }`, stored.ID)
 

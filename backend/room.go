@@ -103,7 +103,57 @@ func (d *RoomDAO) Drop(
 	}, bson.M{
 		"$set": bson.M{
 			"status": RoomStatusPlaying,
-			fmt.Sprintf("sides.%d.cards", playerIndex):  newPlayerCards,
+			fmt.Sprintf("sides.%d.cards", playerIndex): newPlayerCards,
+		},
+	})
+}
+
+func (d *RoomDAO) Move(
+	ctx context.Context,
+	roomID string,
+	playerIndex int,
+	newCenterCard CenterCardInfo,
+	newPlayerCards []Card,
+) error {
+	return d.collection.Update(bson.M{
+		"_id": roomID,
+		"status": bson.M{
+			"$in": []RoomStatus{
+				RoomStatusPlaying,
+				RoomStatusAllPass,
+			},
+		},
+	}, bson.M{
+		"$set": bson.M{
+			fmt.Sprintf("sides.%d.cards", playerIndex): newPlayerCards,
+		},
+		"$push": bson.M{
+			"center": newCenterCard,
+		},
+	})
+}
+
+func (d *RoomDAO) TakeTrick(
+	ctx context.Context,
+	roomID string,
+	playerIndex int,
+	oldCenterCards []CenterCardInfo,
+) error {
+	return d.collection.Update(bson.M{
+		"_id":    roomID,
+		"status": bson.M{
+			"$in": []RoomStatus{
+				RoomStatusPlaying,
+				RoomStatusAllPass,
+			},
+		},
+	}, bson.M{
+		"$set": bson.M{
+			"center":    []CenterCardInfo{},
+			"lastTrick": oldCenterCards,
+		},
+		"$inc": bson.M{
+			fmt.Sprintf("sides.%d.tricks", playerIndex): 1,
 		},
 	})
 }
@@ -282,4 +332,68 @@ func (m *RoomManager) Drop(ctx context.Context, roomID, playerName string, index
 	}
 
 	return m.dao.Drop(ctx, roomID, playerIndex, newCards)
+}
+
+func (m *RoomManager) Move(ctx context.Context, roomID, playerName string, index int) error {
+	room, err := m.dao.FindOneByID(ctx, roomID)
+	if err != nil {
+		return err
+	}
+
+	if room.Status != RoomStatusPlaying && room.Status != RoomStatusAllPass {
+		return errors.New("wrong room status")
+	}
+
+	playerIndex := -1
+	for i, side := range room.Sides {
+		if side.Name == playerName {
+			playerIndex = i
+		}
+	}
+
+	if playerIndex == -1 {
+		return errors.New("wrong player name")
+	}
+
+	if len(room.Sides[playerIndex].Cards) <= index {
+		return errors.New("wrong player cards length")
+	}
+
+	newCenterCard := CenterCardInfo{
+		Player: playerName,
+	}
+	newCards := []Card{}
+	for i, c := range room.Sides[playerIndex].Cards {
+		if i == index {
+			newCenterCard.Card = c
+		} else {
+			newCards = append(newCards, c)
+		}
+	}
+
+	return m.dao.Move(ctx, roomID, playerIndex, newCenterCard, newCards)
+}
+
+func (m *RoomManager) TakeTrick(ctx context.Context, roomID, playerName string) error {
+	room, err := m.dao.FindOneByID(ctx, roomID)
+	if err != nil {
+		return err
+	}
+
+	if room.Status != RoomStatusPlaying && room.Status != RoomStatusAllPass {
+		return errors.New("wrong room status")
+	}
+
+	playerIndex := -1
+	for i, side := range room.Sides {
+		if side.Name == playerName {
+			playerIndex = i
+		}
+	}
+
+	if playerIndex == -1 {
+		return errors.New("wrong player name")
+	}
+
+	return m.dao.TakeTrick(ctx, roomID, playerIndex, room.Center)
 }

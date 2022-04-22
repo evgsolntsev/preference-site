@@ -94,3 +94,38 @@ func (c *Controller) Drop(request *http.Request, playerName string) (interface{}
 
 	return nil, nil
 }
+
+type Index struct {
+	Index int `json:"index"`
+}
+
+func (c *Controller) Move(request *http.Request, playerName string) (interface{}, error) {
+	var index Index
+	if err := json.NewDecoder(request.Body).Decode(&index); err != nil {
+		return nil, errors.New("bad request")
+	}
+
+	room, err := c.roomManager.GetOneForPlayer(request.Context(), playerName)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.roomManager.Move(request.Context(), room.ID, playerName, index.Index); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func (c *Controller) TakeTrick(request *http.Request, playerName string) (interface{}, error) {
+	room, err := c.roomManager.GetOneForPlayer(request.Context(), playerName)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.roomManager.TakeTrick(request.Context(), room.ID, playerName); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
