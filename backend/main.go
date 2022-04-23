@@ -44,6 +44,8 @@ func main() {
 	mux.Handle("/drop", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.Drop))))
 	mux.Handle("/move", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.Move))))
 	mux.Handle("/takeTrick", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.TakeTrick))))
+	mux.Handle("/allPass", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.AllPass))))
+	mux.Handle("/changeVisibility", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.ChangeVisibility))))
 
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{

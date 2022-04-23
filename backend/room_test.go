@@ -72,7 +72,8 @@ func (s *RoomSuite) TestRoomManagerOpenBuypackOK() {
 		}, {
 			Name: "kek",
 		}},
-		Status: RoomStatusCreated,
+		BuypackIndex: 2,
+		Status:       RoomStatusCreated,
 	})
 	require.NoError(s.T(), err)
 
@@ -111,7 +112,8 @@ func (s *RoomSuite) TestRoomManagerTakeBuypackOK() {
 			Name:  "kek",
 			Cards: []Card{{SuitHearts, "A"}},
 		}},
-		Status: RoomStatusBuypackOpened,
+		BuypackIndex: 2,
+		Status:       RoomStatusBuypackOpened,
 	})
 	require.NoError(s.T(), err)
 
@@ -288,4 +290,67 @@ func (s *RoomSuite) TestRoomManagerTakeTrick() {
 		Player: "lol",
 	}}, updatedRoom.LastTrick)
 	assert.Equal(s.T(), 6, updatedRoom.Sides[2].Tricks)
+}
+
+func (s *RoomSuite) TestRoomManagerAllPass() {
+	room, err := s.DAO.Insert(s.Ctx, &Room{
+		Sides: []RoomSideInfo{{
+			Name: "evgsol",
+		}, {
+			Name: "solarka",
+		}, {
+			Name:  "lol",
+			Cards: []Card{{SuitSpades, "Q"}, {SuitSpades, "K"}},
+		}, {
+			Name: "kek",
+		}},
+		BuypackIndex: 2,
+		Status:       RoomStatusCreated,
+	})
+	require.NoError(s.T(), err)
+
+	err = s.Manager.AllPass(s.Ctx, room.ID)
+	require.NoError(s.T(), err)
+
+	updatedRoom, err := s.DAO.FindOneByID(s.Ctx, room.ID)
+	require.NoError(s.T(), err)
+
+	assert.False(s.T(), updatedRoom.Sides[2].Open)
+	assert.Equal(s.T(), RoomStatusAllPass, updatedRoom.Status)
+	assert.Equal(s.T(), []CenterCardInfo{{
+		Card:   Card{SuitSpades, "Q"},
+		Player: "lol",
+	}}, updatedRoom.Center)
+	assert.Equal(s.T(), []Card{{SuitSpades, "K"}}, updatedRoom.Sides[2].Cards)
+}
+
+func (s *RoomSuite) TestRoomManagerChangeVisibility() {
+	room, err := s.DAO.Insert(s.Ctx, &Room{
+		Sides: []RoomSideInfo{{
+			Name:  "evgsol",
+			Cards: []Card{{SuitSpades, "A"}},
+		}, {
+			Name:  "solarka",
+			Cards: []Card{{SuitDiamonds, "A"}},
+		}, {
+			Name:  "lol",
+			Cards: []Card{{SuitClubs, "7"}, {SuitClubs, "8"}},
+		}, {
+			Name:  "kek",
+			Cards: []Card{{SuitHearts, "A"}},
+			Open:  true,
+		}},
+		BuypackIndex: 2,
+		Status:       RoomStatusBuypackOpened,
+	})
+	require.NoError(s.T(), err)
+
+	err = s.Manager.ChangeVisibility(s.Ctx, room.ID, "kek")
+	require.NoError(s.T(), err)
+
+	updatedRoom, err := s.DAO.FindOneByID(s.Ctx, room.ID)
+	require.NoError(s.T(), err)
+
+	assert.Equal(s.T(), RoomStatusBuypackOpened, updatedRoom.Status)
+	assert.False(s.T(), updatedRoom.Sides[3].Open)
 }

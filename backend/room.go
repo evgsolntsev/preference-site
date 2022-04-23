@@ -140,7 +140,7 @@ func (d *RoomDAO) TakeTrick(
 	oldCenterCards []CenterCardInfo,
 ) error {
 	return d.collection.Update(bson.M{
-		"_id":    roomID,
+		"_id": roomID,
 		"status": bson.M{
 			"$in": []RoomStatus{
 				RoomStatusPlaying,
@@ -154,6 +154,40 @@ func (d *RoomDAO) TakeTrick(
 		},
 		"$inc": bson.M{
 			fmt.Sprintf("sides.%d.tricks", playerIndex): 1,
+		},
+	})
+}
+
+func (d *RoomDAO) AllPass(
+	ctx context.Context,
+	roomID string,
+	buypackIndex int,
+	newBuypackCards []Card,
+	newCenterCards []CenterCardInfo,
+) error {
+	return d.collection.Update(bson.M{
+		"_id":    roomID,
+		"status": RoomStatusCreated,
+	}, bson.M{
+		"$set": bson.M{
+			"status": RoomStatusAllPass,
+			"center": newCenterCards,
+			fmt.Sprintf("sides.%d.cards", buypackIndex): newBuypackCards,
+		},
+	})
+}
+
+func (d *RoomDAO) ChangeVisibility(
+	ctx context.Context,
+	roomID string,
+	playerIndex int,
+	open bool,
+) error {
+	return d.collection.Update(bson.M{
+		"_id": roomID,
+	}, bson.M{
+		"$set": bson.M{
+			fmt.Sprintf("sides.%d.open", playerIndex): open,
 		},
 	})
 }
@@ -221,6 +255,8 @@ func (m *RoomManager) Shuffle(ctx context.Context, roomID, playerName string) er
 	room.Sides[buypackIndex].Tricks = 0
 	room.Sides[buypackIndex].Open = false
 	room.Center = nil
+	room.BuypackIndex = buypackIndex
+	room.LastTrick = []CenterCardInfo{}
 	for i := 0; i < 3; i++ {
 		room.Sides[playersIndexes[i]].Cards = allCards[2+i*10 : 2+(i+1)*10]
 		sort.Slice(room.Sides[playersIndexes[i]].Cards, func(l, r int) bool {
@@ -243,18 +279,7 @@ func (m *RoomManager) OpenBuypack(ctx context.Context, roomID string) error {
 		return errors.New("wrong room status")
 	}
 
-	buypackIndex := -1
-	for i, side := range room.Sides {
-		if len(side.Cards) == 2 {
-			buypackIndex = i
-		}
-	}
-
-	if buypackIndex == -1 {
-		return errors.New("bad shuffling")
-	}
-
-	return m.dao.OpenBuypack(ctx, roomID, buypackIndex)
+	return m.dao.OpenBuypack(ctx, roomID, room.BuypackIndex)
 }
 
 func (m *RoomManager) TakeBuypack(ctx context.Context, roomID, playerName string) error {
@@ -267,30 +292,23 @@ func (m *RoomManager) TakeBuypack(ctx context.Context, roomID, playerName string
 		return errors.New("wrong room status")
 	}
 
-	buypackIndex := -1
 	playerIndex := -1
 	for i, side := range room.Sides {
-		if len(side.Cards) == 2 {
-			buypackIndex = i
-		}
 		if side.Name == playerName {
 			playerIndex = i
 		}
 	}
 
-	if buypackIndex == -1 {
-		return errors.New("bad shuffling")
-	}
 	if playerIndex == -1 {
 		return errors.New("wrong player name")
 	}
 
-	cards := append(room.Sides[playerIndex].Cards, room.Sides[buypackIndex].Cards...)
+	cards := append(room.Sides[playerIndex].Cards, room.Sides[room.BuypackIndex].Cards...)
 	sort.Slice(cards, func(l, r int) bool {
 		return cards[l].Less(cards[r])
 	})
 
-	return m.dao.TakeBuypack(ctx, roomID, buypackIndex, playerIndex, cards)
+	return m.dao.TakeBuypack(ctx, roomID, room.BuypackIndex, playerIndex, cards)
 }
 
 func (m *RoomManager) Drop(ctx context.Context, roomID, playerName string, indexes []int) error {
@@ -396,4 +414,42 @@ func (m *RoomManager) TakeTrick(ctx context.Context, roomID, playerName string) 
 	}
 
 	return m.dao.TakeTrick(ctx, roomID, playerIndex, room.Center)
+}
+
+func (m *RoomManager) AllPass(ctx context.Context, roomID string) error {
+	room, err := m.dao.FindOneByID(ctx, roomID)
+	if err != nil {
+		return err
+	}
+
+	if room.Status != RoomStatusCreated {
+		return errors.New("wrong room status")
+	}
+
+	newCenterCards := []CenterCardInfo{{
+		Card:   room.Sides[room.BuypackIndex].Cards[0],
+		Player: room.Sides[room.BuypackIndex].Name,
+	}}
+	newBuypackCards := room.Sides[room.BuypackIndex].Cards[1:]
+	return m.dao.AllPass(ctx, roomID, room.BuypackIndex, newBuypackCards, newCenterCards)
+}
+
+func (m *RoomManager) ChangeVisibility(ctx context.Context, roomID, playerName string) error {
+	room, err := m.dao.FindOneByID(ctx, roomID)
+	if err != nil {
+		return err
+	}
+
+	playerIndex := -1
+	for i, side := range room.Sides {
+		if side.Name == playerName {
+			playerIndex = i
+		}
+	}
+
+	if playerIndex == -1 {
+		return errors.New("wrong player name")
+	}
+
+	return m.dao.ChangeVisibility(ctx, roomID, playerIndex, !room.Sides[playerIndex].Open)
 }

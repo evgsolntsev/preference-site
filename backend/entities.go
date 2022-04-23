@@ -91,6 +91,7 @@ type Room struct {
 	LastTrick    []CenterCardInfo `json:"lastTrick" bson:"lastTrick"`
 	Status       RoomStatus       `json:"status" bson:"status"`
 	PlayersCount int              `json:"playersCount" bson:"playersCount"`
+	BuypackIndex int              `json:"buypackIndex" bson:"buypackIndex"`
 }
 
 func (r *Room) PlayerSideIndex(playerName string) int {

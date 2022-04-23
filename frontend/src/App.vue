@@ -36,21 +36,31 @@
   </div>
   <div class="buttons">
     <template v-if="logged">
-      <template v-if="status === 0">
-        <button @click="openBuypack">Open buypack</button>
+      <template v-if="!onBuypack">
+        <template v-if="status === 0">
+          <button @click="openBuypack">Open buypack</button>
+          <button @click="allPass">All pass</button>
+        </template>
+        <template v-if="status === 2">
+          <button @click="takeBuypack">Take buypack</button>
+        </template>
+        <template v-if="(status === 3) && (down.cards.length === 12)">
+          <button @click="drop" :disabled="isDropDisabled()">Drop</button>
+        </template>
+        <button @click="changeVisibility">Change visibility</button>
       </template>
-      <template v-if="status === 2">
-        <button @click="takeBuypack">Take buypack</button>
-      </template>
-      <template v-if="status === 3">
-        <button @click="drop" :disabled="isDropDisabled()">Drop</button>
-      </template>
-      <template v-if="status === 1">
+      <template v-if="(status === 1) || (status === 4)">
         <button @click="move" :disabled="isMoveDisabled()">Make a move</button>
         <button @click="takeTrick" :disabled="isTakeTrickDisabled()">Take a trick</button>
       </template>
       <button @click="shuffle">Shuffle</button>
     </template>
+  </div>
+  <div class="lastTrick grid-container">
+    <img v-for="(cardInfo, index) in lastTrick" :key="index" class="vertical" :src="getImgUrl(cardInfo.card, '')" :style="getGridColumnStyle(index)">
+  </div>
+  <div class="errors">
+    <p style="color: red;">{{ lastError }}</p>
   </div>
 </div>
 </template>
@@ -60,6 +70,9 @@ import axios from 'axios';
 export default {
   name: 'App',
   methods: {
+    updateLastError(err) {
+        this.lastError = err;
+    },
     getSelected() {
         var indexes = [];
         for (let i = 0; i < this.selected.length; i++) {
@@ -135,7 +148,9 @@ export default {
           this.right = response.data.sides[(playerIndex+3)%4];
           this.center = response.data.center;
           this.status = response.data.status;
-        })
+          this.onBuypack = (playerIndex == response.data.buypackIndex);
+          this.lastTrick = response.data.lastTrick;
+        }).catch(this.updateLastError);
       }
     },
     dropSelected() {
@@ -144,39 +159,50 @@ export default {
     },
     updateAll() {
         this.fetchData();
-        this.dropSelected()
+        this.dropSelected();
+        this.lastError = "";
     },
     shuffle() {
         this.axios.post(this.backend+"/shuffle").then(() => {
             this.updateAll()
-        })
+        }).catch(this.updateLastError);
     },
     openBuypack() {
         this.axios.post(this.backend+"/openBuypack").then(() => {
             this.updateAll()
-        })
+        }).catch(this.updateLastError);
+    },
+    allPass() {
+        this.axios.post(this.backend+"/allPass").then(() => {
+            this.updateAll()
+        }).catch(this.updateLastError);
     },
     takeBuypack() {
         this.axios.post(this.backend+"/takeBuypack").then(() => {
             this.updateAll()
-        })
+        }).catch(this.updateLastError);
+    },
+    changeVisibility() {
+        this.axios.post(this.backend+"/changeVisibility").then(() => {
+            this.updateAll()
+        }).catch(this.updateLastError);
     },
     drop() {
         var indexes = this.getSelected();
         this.axios.post(this.backend+"/drop", {"indexes": indexes}).then(() => {
             this.updateAll()
-        })
+        }).catch(this.updateLastError);
     },
     move() {
         var indexes = this.getSelected();
         this.axios.post(this.backend+"/move", {"index": indexes[0]}).then(() => {
             this.updateAll()
-        })
+        }).catch(this.updateLastError);
     },
     takeTrick() {
         this.axios.post(this.backend+"/takeTrick").then(() => {
             this.updateAll()
-        })        
+        }).catch(this.updateLastError);
     },
     login() {
       console.log("trying to log in with '"+this.player+"' and '"+this.password+"'");
@@ -185,7 +211,8 @@ export default {
         "password": this.password,
       }).then(() => {
         this.logged = true;
-      })
+        this.updateAll()
+      }).catch(this.updateLastError);
     }
   },
   data() {
@@ -197,10 +224,13 @@ export default {
       left: nullSide,
       right: nullSide,
       center: nullSide,
+      lastTrick: nullSide,
       status: "",
       player: "",
       password: "",
+      lastError: "",
       logged: false,
+      onBuypack: false,
       selected: [false, false, false, false, false, false, false, false, false, false, false, false],
       hovered: [false, false, false, false, false, false, false, false, false, false, false, false],
       backend: process.env.NODE_ENV === 'development'
@@ -282,7 +312,7 @@ div.grid-container {
 
 div.outer {
     grid-template-columns: 1fr 2fr 1fr;
-    grid-template-rows: 10fr 20fr 10fr 10fr;
+    grid-template-rows: 10fr 20fr 10fr 5fr 5fr;
 }
 
 .up {
@@ -311,6 +341,18 @@ div.outer {
     border: 1px solid;
 }
 
+.lastTrick {
+    grid-column: 1;
+    grid-row: 5;
+    border: 1px solid;
+}
+
+.errors {
+    grid-column: 3;
+    grid-row: 5;
+    border: 1px solid;
+}
+
 .players {
     grid-column: 1;
     grid-row: 4;
@@ -325,7 +367,7 @@ div.outer {
 
 .buttons {
     grid-column: 2;
-    grid-row: 4;
+    grid-row: 4 / 6;
     border: 1px solid;
 }
 </style>

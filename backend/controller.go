@@ -129,3 +129,29 @@ func (c *Controller) TakeTrick(request *http.Request, playerName string) (interf
 
 	return nil, nil
 }
+
+func (c *Controller) AllPass(request *http.Request, playerName string) (interface{}, error) {
+	room, err := c.roomManager.GetOneForPlayer(request.Context(), playerName)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.roomManager.AllPass(request.Context(), room.ID); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func (c *Controller) ChangeVisibility(request *http.Request, playerName string) (interface{}, error) {
+	room, err := c.roomManager.GetOneForPlayer(request.Context(), playerName)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.roomManager.ChangeVisibility(request.Context(), room.ID, playerName); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}

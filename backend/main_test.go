@@ -172,7 +172,8 @@ func TestRoomHandler(t *testing.T) {
             }],
             "status": 1,
             "lastTrick": [],
-            "playersCount": 0
+            "playersCount": 0,
+            "buypackIndex": 0
         }`, stored.ID)
 
 	res, err := json.Marshal(result)
