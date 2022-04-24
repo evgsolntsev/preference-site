@@ -30,30 +30,13 @@
     <template v-if="!logged">
       <div><input v-model="player" type="text" placeholder="login"></div>
       <div><input v-model="password" type="text" placeholder="password"></div>
-      <button @click="login"> Submit </button>
+      <button @click="login">Submit</button>
     </template>
     <div v-else>Welcome, {{ player }}!</div>
   </div>
-  <div class="buttons">
+  <div class="buttons btn-group">
     <template v-if="logged">
-      <template v-if="!onBuypack">
-        <template v-if="status === 0">
-          <button @click="openBuypack">Open buypack</button>
-          <button @click="allPass">All pass</button>
-        </template>
-        <template v-if="status === 2">
-          <button @click="takeBuypack">Take buypack</button>
-        </template>
-        <template v-if="(status === 3) && (down.cards.length === 12)">
-          <button @click="drop" :disabled="isDropDisabled()">Drop</button>
-        </template>
-        <button @click="changeVisibility">Change visibility</button>
-      </template>
-      <template v-if="(status === 1) || (status === 4)">
-        <button @click="move" :disabled="isMoveDisabled()">Make a move</button>
-        <button @click="takeTrick" :disabled="isTakeTrickDisabled()">Take a trick</button>
-      </template>
-      <button @click="shuffle">Shuffle</button>
+      <button v-for="(buttonInfo, index) in buttons()" :key="index" @click="buttonInfo.Click" :disabled="buttonInfo.IsDisabled()" :style="buttonsStyle()">{{ buttonInfo.Text }}</button>
     </template>
   </div>
   <div class="lastTrick grid-container">
@@ -70,6 +53,59 @@ import axios from 'axios';
 export default {
   name: 'App',
   methods: {
+    buttonsStyle() {
+        return 'height: '+ (100/this.buttons().length)+ '%;';
+    },
+    buttons() {
+        let showText = "Show your cards";
+        if (this.down.open === true) {
+            showText = "Hide your cards";
+        }
+        let allButtons = [{
+            "IsShown": () => (!this.onBuypack && (this.status === 0)),
+            "IsDisabled": () => (false),
+            "Text": "Open buypack",
+            "Click": this.openBuypack
+        },  {
+            "IsShown": () => (!this.onBuypack && (this.status === 2)),
+            "Text": "Take buypack",
+            "IsDisabled": () => (false),
+            "Click": this.takeBuypack
+        }, {
+            "IsShown": () => (!this.onBuypack && (this.status === 3) && (this.down.cards.length === 12)),
+            "IsDisabled": this.isDropDisabled,
+            "Text": "Drop",
+            "Click": this.drop
+        }, {
+            "IsShown": () => (!this.onBuypack),
+            "IsDisabled": () => (false),
+            "Text": showText,
+            "Click": this.changeVisibility
+        }, {
+            "IsShown": () => (!this.onBuypack && ((this.status === 1) || (this.status === 4))),
+            "IsDisabled": this.isMoveDisabled,
+            "Text": "Move",
+            "Click": this.move
+        }, {
+            "IsShown": () => ((this.status === 1) || (this.status === 4)),
+            "IsDisabled": this.isTakeTrickDisabled,
+            "Text": "Take trick",
+            "Click": this.takeTrick
+        }, {
+            "IsShown": () => (true),
+            "IsDisabled": () => (false),
+            "Text": "Shuffle",
+            "Click": this.shuffle
+        }];
+
+        let result = [];
+        for (let i = 0; i < allButtons.length; i++) {
+            if (allButtons[i].IsShown()) {
+                result.push(allButtons[i]);
+            }
+        }
+        return result;
+    },
     updateLastError(err) {
         this.lastError = err;
     },
@@ -370,4 +406,33 @@ div.outer {
     grid-row: 4 / 6;
     border: 1px solid;
 }
+
+.btn-group {
+  height: 100%;
+}
+
+.btn-group button {
+  border: 1px solid black;
+  color: black;
+  cursor: pointer;
+  width: 100%;
+  display: block;
+}
+
+.btn-group button:not(:last-child) {
+  border-bottom: none;
+}
+
+.btn-group button:enabled {
+  background-color: lightgrey;
+}
+
+.btn-group button:disabled {
+  background-color: darkgrey;
+}
+
+.btn-group button:hover:enabled {
+  background-color: #3e8e41;
+}
+
 </style>

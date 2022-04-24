@@ -268,7 +268,8 @@ func (s *RoomSuite) TestRoomManagerTakeTrick() {
 			Card:   Card{SuitClubs, "8"},
 			Player: "lol",
 		}},
-		Status: RoomStatusPlaying,
+		Status:       RoomStatusAllPass,
+		BuypackIndex: 0,
 	})
 	require.NoError(s.T(), err)
 
@@ -278,7 +279,11 @@ func (s *RoomSuite) TestRoomManagerTakeTrick() {
 	updatedRoom, err := s.DAO.FindOneByID(s.Ctx, room.ID)
 	require.NoError(s.T(), err)
 
-	assert.Equal(s.T(), []CenterCardInfo{}, updatedRoom.Center)
+	assert.Equal(s.T(), []CenterCardInfo{{
+		Card:   Card{SuitSpades, "A"},
+		Player: "evgsol",
+	}}, updatedRoom.Center)
+	assert.Equal(s.T(), []Card{}, updatedRoom.Sides[0].Cards)
 	assert.Equal(s.T(), []CenterCardInfo{{
 		Card:   Card{SuitSpades, "K"},
 		Player: "evgsol",

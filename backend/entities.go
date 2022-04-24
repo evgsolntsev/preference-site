@@ -81,7 +81,7 @@ type RoomSideInfo struct {
 	Name   string `json:"name" bson:"name"`
 	Cards  []Card `json:"cards" bson:"cards"`
 	Tricks int    `json:"tricks" bson:"tricks"`
-	Open   bool   `json:"-" bson:"open"`
+	Open   bool   `json:"open" bson:"open"`
 }
 
 type Room struct {

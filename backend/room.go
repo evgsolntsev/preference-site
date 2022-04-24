@@ -136,8 +136,10 @@ func (d *RoomDAO) Move(
 func (d *RoomDAO) TakeTrick(
 	ctx context.Context,
 	roomID string,
+	buypackIndex int,
 	playerIndex int,
 	oldCenterCards []CenterCardInfo,
+	newCenterCards []CenterCardInfo,
 ) error {
 	return d.collection.Update(bson.M{
 		"_id": roomID,
@@ -149,8 +151,9 @@ func (d *RoomDAO) TakeTrick(
 		},
 	}, bson.M{
 		"$set": bson.M{
-			"center":    []CenterCardInfo{},
+			"center":    newCenterCards,
 			"lastTrick": oldCenterCards,
+			fmt.Sprintf("sides.%d.cards", buypackIndex): []Card{},
 		},
 		"$inc": bson.M{
 			fmt.Sprintf("sides.%d.tricks", playerIndex): 1,
@@ -413,7 +416,14 @@ func (m *RoomManager) TakeTrick(ctx context.Context, roomID, playerName string) 
 		return errors.New("wrong player name")
 	}
 
-	return m.dao.TakeTrick(ctx, roomID, playerIndex, room.Center)
+	newCenter := []CenterCardInfo{}
+	if len(room.Sides[room.BuypackIndex].Cards) > 0 {
+		newCenter = []CenterCardInfo{{
+			Card:   room.Sides[room.BuypackIndex].Cards[0],
+			Player: room.Sides[room.BuypackIndex].Name,
+		}}
+	}
+	return m.dao.TakeTrick(ctx, roomID, room.BuypackIndex, playerIndex, room.Center, newCenter)
 }
 
 func (m *RoomManager) AllPass(ctx context.Context, roomID string) error {
