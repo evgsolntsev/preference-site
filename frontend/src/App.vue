@@ -271,7 +271,7 @@ export default {
       hovered: [false, false, false, false, false, false, false, false, false, false, false, false],
       backend: process.env.NODE_ENV === 'development'
         ? 'http://0.0.0.0:8090'
-        : 'http://52.91.188.222:8090',
+        : 'http://preference.evgsol.org:8090',
       axios: axios.create({
         withCredentials: true
       })
