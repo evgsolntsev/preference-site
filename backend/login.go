@@ -59,12 +59,6 @@ func login(w http.ResponseWriter, request *http.Request) {
 		Value:   token,
 		Expires: expirationTime,
 	})
-
-	http.SetCookie(w, &http.Cookie{
-		Name:    "player",
-		Value:   creds.Login,
-		Expires: expirationTime,
-	})
 }
 
 func loginRequired(f func(http.ResponseWriter, *http.Request, string)) http.Handler {

@@ -55,7 +55,7 @@ export default {
   name: 'App',
   methods: {
     isLogged() {
-        return VueCookies.isKey("player") && VueCookies.isKey("token")
+        return VueCookies.isKey("player")
     },
     playerName() {
         return VueCookies.get("player")
@@ -252,6 +252,7 @@ export default {
         "login": this.player,
         "password": this.password,
       }).then(() => {
+	VueCookies.set("player", this.player, {expires: "12h"})
         this.updateAll()
       }).catch(this.updateLastError);
     }
