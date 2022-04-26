@@ -37,6 +37,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.Handle("/login", handlers.LoggingHandler(os.Stdout, http.HandlerFunc(login)))
+
 	mux.Handle("/room", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.Room))))
 	mux.Handle("/shuffle", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.Shuffle))))
 	mux.Handle("/openBuypack", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.OpenBuypack))))

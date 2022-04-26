@@ -19,7 +19,7 @@
     <img v-for="(cardInfo, index) in down.cards" :key="index" :class="'vertical '+isSelected(index)+' '+isHover(index)" :src="getImgUrl(cardInfo, '')" :style="getGridColumnStyle(index)" @mouseover="hovered[index]=true" @mouseleave="hovered[index]=false" @click="selected[index]=!selected[index]">
   </div>
   <div class="players">
-    <template v-if="logged">
+    <template v-if="isLogged()">
       <div> Left player: {{ playerDescription(left) }}</div>
       <div> Up player: {{ playerDescription(up) }}</div>
       <div> Right player: {{ playerDescription(right) }}</div>
@@ -27,15 +27,15 @@
     </template>
   </div>
   <div class="login">
-    <template v-if="!logged">
+    <template v-if="!isLogged()">
       <div><input v-model="player" type="text" placeholder="login"></div>
       <div><input v-model="password" type="text" placeholder="password"></div>
       <button @click="login">Submit</button>
     </template>
-    <div v-else>Welcome, {{ player }}!</div>
+    <div v-else>Welcome, {{ playerName() }}!</div>
   </div>
   <div class="buttons btn-group">
-    <template v-if="logged">
+    <template v-if="isLogged()">
       <button v-for="(buttonInfo, index) in buttons()" :key="index" @click="buttonInfo.Click" :disabled="buttonInfo.IsDisabled()" :style="buttonsStyle()">{{ buttonInfo.Text }}</button>
     </template>
   </div>
@@ -50,9 +50,16 @@
 
 <script>
 import axios from 'axios';
+import VueCookies from 'vue-cookies';
 export default {
   name: 'App',
   methods: {
+    isLogged() {
+        return VueCookies.isKey("player") && VueCookies.isKey("token")
+    },
+    playerName() {
+        return VueCookies.get("player")
+    },
     buttonsStyle() {
         return 'height: '+ (100/this.buttons().length)+ '%;';
     },
@@ -156,12 +163,12 @@ export default {
         return side.name+", "+side.tricks+" tricks"
     },
     fetchData() {
-      if (this.logged) {
+      if (this.isLogged()) {
         this.axios.get(this.backend+"/room").then(response => {
           this.room = response.data;
           let playerIndex = -1;
           for (let i = 0; i < response.data.sides.length; i++) {
-            if (response.data.sides[i].name == this.player) {
+            if (response.data.sides[i].name == this.playerName()) {
               playerIndex = i;
             }
           }
@@ -241,12 +248,10 @@ export default {
         }).catch(this.updateLastError);
     },
     login() {
-      console.log("trying to log in with '"+this.player+"' and '"+this.password+"'");
       this.axios.post(this.backend+"/login", {
         "login": this.player,
         "password": this.password,
       }).then(() => {
-        this.logged = true;
         this.updateAll()
       }).catch(this.updateLastError);
     }
@@ -262,10 +267,8 @@ export default {
       center: nullSide,
       lastTrick: nullSide,
       status: "",
-      player: "",
       password: "",
       lastError: "",
-      logged: false,
       onBuypack: false,
       selected: [false, false, false, false, false, false, false, false, false, false, false, false],
       hovered: [false, false, false, false, false, false, false, false, false, false, false, false],
