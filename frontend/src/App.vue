@@ -269,9 +269,7 @@ export default {
       onBuypack: false,
       selected: [false, false, false, false, false, false, false, false, false, false, false, false],
       hovered: [false, false, false, false, false, false, false, false, false, false, false, false],
-      backend: process.env.NODE_ENV === 'development'
-        ? 'http://0.0.0.0:8090'
-        : 'http://preference.evgsol.org:8090',
+      backend: process.env.VUE_APP_HOSTNAME,
       axios: axios.create({
         withCredentials: true
       })

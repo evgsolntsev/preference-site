@@ -19,6 +19,7 @@ backend/preference-site
 
 # Config
 *.json
+*.env
 
 # Scripts
 *restore_db.sh
