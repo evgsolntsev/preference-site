@@ -42,15 +42,14 @@
   <div class="lastTrick grid-container">
     <img v-for="(cardInfo, index) in lastTrick" :key="index" class="vertical" :src="getImgUrl(cardInfo.card, '')" :style="getGridColumnStyle(index)">
   </div>
-  <div class="errors">
-    <p style="color: red;">{{ lastError }}</p>
-  </div>
 </div>
 </template>
 
 <script>
 import axios from 'axios';
 import VueCookies from 'vue-cookies';
+import { useToast } from "vue-toastification";
+
 export default {
   name: 'App',
   methods: {
@@ -114,7 +113,8 @@ export default {
         return result;
     },
     updateLastError(err) {
-        this.lastError = err;
+	const toast = useToast();
+	toast.error(err.message);
     },
     getSelected() {
         var indexes = [];
@@ -203,7 +203,6 @@ export default {
     updateAll() {
         this.fetchData();
         this.dropSelected();
-        this.lastError = "";
     },
     shuffle() {
         this.axios.post(this.backend+"/shuffle").then(() => {
@@ -255,6 +254,9 @@ export default {
 	VueCookies.set("player", this.player, {expires: "12h"})
         this.updateAll()
       }).catch(this.updateLastError);
+    },
+    logout() {
+	VueCookies.remove("player")
     }
   },
   data() {
@@ -269,7 +271,7 @@ export default {
       lastTrick: nullSide,
       status: "",
       password: "",
-      lastError: "",
+      player: "",
       onBuypack: false,
       selected: [false, false, false, false, false, false, false, false, false, false, false, false],
       hovered: [false, false, false, false, false, false, false, false, false, false, false, false],
@@ -385,12 +387,6 @@ div.outer {
     border: 1px solid;
 }
 
-.errors {
-    grid-column: 3;
-    grid-row: 5;
-    border: 1px solid;
-}
-
 .players {
     grid-column: 1;
     grid-row: 4;
@@ -399,7 +395,7 @@ div.outer {
 
 .login {
     grid-column: 3;
-    grid-row: 4;
+    grid-row: 4 / 6;
     border: 1px solid;
 }
 
