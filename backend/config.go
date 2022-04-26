@@ -6,7 +6,8 @@ import (
 )
 
 type Configuration struct {
-	MongoURL string `json:"mongo"`
+	Hostnames []string `json:"hostnames"`
+	MongoURL  string   `json:"mongo"`
 }
 
 func (c *Configuration) Init(filename string) error {
