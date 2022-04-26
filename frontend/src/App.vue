@@ -251,7 +251,9 @@ export default {
       this.axios.post(this.backend+"/login", {
         "login": this.player,
         "password": this.password,
-      }).then(() => {
+      }).then(response => {
+        console.log("kek!");
+        console.log(response.headers["set-cookie"]);
         this.updateAll()
       }).catch(this.updateLastError);
     }
