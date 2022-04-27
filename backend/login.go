@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -29,15 +30,26 @@ type Claims struct {
 
 const LIFETIME = 12 * time.Hour
 
-func login(w http.ResponseWriter, request *http.Request) {
+type LoginManager struct {
+	userManager *UserManager
+}
+
+func NewLoginManager(
+	userManager *UserManager,
+) *LoginManager {
+	return &LoginManager{
+		userManager: userManager,
+	}
+}
+
+func (m *LoginManager) Login(w http.ResponseWriter, request *http.Request) {
 	var creds Creds
 	if err := json.NewDecoder(request.Body).Decode(&creds); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	expected, ok := users[creds.Login]
-	if !ok || expected != creds.Password {
+	if err := m.userManager.Check(request.Context(), creds.Login, creds.Password); err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -61,16 +73,27 @@ func login(w http.ResponseWriter, request *http.Request) {
 	})
 }
 
-func loginRequired(f func(http.ResponseWriter, *http.Request, string)) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func (m *LoginManager) Register(request *http.Request) (interface{}, error) {
+	var creds Creds
+	if err := json.NewDecoder(request.Body).Decode(&creds); err != nil {
+		return nil, err
+	}
+
+	if err := m.userManager.Create(request.Context(), creds.Login, creds.Password); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func loginRequired(f func(*http.Request, string) (interface{}, error)) func(*http.Request) (interface{}, error) {
+	return func(r *http.Request) (interface{}, error) {
 		c, err := r.Cookie("token")
 		if err != nil {
 			if err == http.ErrNoCookie {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
+				return nil, errors.New("no auth token cookie")
 			}
-			w.WriteHeader(http.StatusBadRequest)
-			return
+			return nil, errors.New("failed to get auth token cookie")
 		}
 
 		var claims Claims
@@ -79,17 +102,14 @@ func loginRequired(f func(http.ResponseWriter, *http.Request, string)) http.Hand
 		})
 		if err != nil {
 			if err == jwt.ErrSignatureInvalid {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
+				return nil, errors.New("invalid auth signature")
 			}
-			w.WriteHeader(http.StatusBadRequest)
-			return
+			return nil, errors.New("failed to check auth signature")
 		}
 		if !token.Valid {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
+			return nil, errors.New("invalid auth token")
 		}
 
-		f(w, r, claims.Login)
-	})
+		return f(r, claims.Login)
+	}
 }

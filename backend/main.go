@@ -32,21 +32,25 @@ func main() {
 
 	roomDAO := NewRoomDAO(session)
 	roomManager := NewRoomManager(roomDAO)
+	userDAO := NewUserDAO(session)
+	userManager := NewUserManager(userDAO)
+	loginManager := NewLoginManager(userManager)
 	controller := NewController(roomManager)
 
 	mux := http.NewServeMux()
 
-	mux.Handle("/login", handlers.LoggingHandler(os.Stdout, http.HandlerFunc(login)))
+	mux.Handle("/login", handlers.LoggingHandler(os.Stdout, http.HandlerFunc(loginManager.Login)))
+	mux.Handle("/register", handlers.LoggingHandler(os.Stdout, decorate(loginManager.Register)))
 
-	mux.Handle("/room", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.Room))))
-	mux.Handle("/shuffle", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.Shuffle))))
-	mux.Handle("/openBuypack", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.OpenBuypack))))
-	mux.Handle("/takeBuypack", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.TakeBuypack))))
-	mux.Handle("/drop", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.Drop))))
-	mux.Handle("/move", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.Move))))
-	mux.Handle("/takeTrick", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.TakeTrick))))
-	mux.Handle("/allPass", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.AllPass))))
-	mux.Handle("/changeVisibility", handlers.LoggingHandler(os.Stdout, loginRequired(decorate(controller.ChangeVisibility))))
+	mux.Handle("/room", handlers.LoggingHandler(os.Stdout, decorate(loginRequired(controller.Room))))
+	mux.Handle("/shuffle", handlers.LoggingHandler(os.Stdout, decorate(loginRequired(controller.Shuffle))))
+	mux.Handle("/openBuypack", handlers.LoggingHandler(os.Stdout, decorate(loginRequired(controller.OpenBuypack))))
+	mux.Handle("/takeBuypack", handlers.LoggingHandler(os.Stdout, decorate(loginRequired(controller.TakeBuypack))))
+	mux.Handle("/drop", handlers.LoggingHandler(os.Stdout, decorate(loginRequired(controller.Drop))))
+	mux.Handle("/move", handlers.LoggingHandler(os.Stdout, decorate(loginRequired(controller.Move))))
+	mux.Handle("/takeTrick", handlers.LoggingHandler(os.Stdout, decorate(loginRequired(controller.TakeTrick))))
+	mux.Handle("/allPass", handlers.LoggingHandler(os.Stdout, decorate(loginRequired(controller.AllPass))))
+	mux.Handle("/changeVisibility", handlers.LoggingHandler(os.Stdout, decorate(loginRequired(controller.ChangeVisibility))))
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   Config.Hostnames,
@@ -56,9 +60,9 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8090", c.Handler(mux)))
 }
 
-func decorate(f func(*http.Request, string) (interface{}, error)) func(http.ResponseWriter, *http.Request, string) {
-	return func(w http.ResponseWriter, r *http.Request, s string) {
-		result, err := f(r, s)
+func decorate(f func(*http.Request) (interface{}, error)) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		result, err := f(r)
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
 		if err == nil {
@@ -67,8 +71,9 @@ func decorate(f func(*http.Request, string) (interface{}, error)) func(http.Resp
 				panic(err)
 			}
 		} else {
+			// TODO: implement specific exceptions and mapping to status codes
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 		}
-	}
+	})
 }

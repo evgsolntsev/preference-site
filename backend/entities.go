@@ -103,3 +103,8 @@ func (r *Room) PlayerSideIndex(playerName string) int {
 
 	return -1
 }
+
+type User struct {
+	Login        string `bson:"_id"`
+	PasswordHash []byte `bson:"pass"`
+}

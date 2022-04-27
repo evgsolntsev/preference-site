@@ -112,6 +112,7 @@ func TestRoomHandler(t *testing.T) {
                         "suit": "S",
                         "rank": "7"
                     }],
+                    "open": false,
                     "tricks": 0
                 },
                 {
@@ -128,6 +129,7 @@ func TestRoomHandler(t *testing.T) {
                         "suit": "C",
                         "rank": "J"
                     }],
+                    "open": true,
                     "tricks": 0
                 },
                 {
@@ -144,6 +146,7 @@ func TestRoomHandler(t *testing.T) {
                         "suit": "X",
                         "rank": "X"
                     }],
+                    "open": false,
                     "tricks": 0
                 },
                 {
@@ -160,6 +163,7 @@ func TestRoomHandler(t *testing.T) {
                         "suit": "X",
                         "rank": "X"
                     }],
+                    "open": false,
                     "tricks": 0
                 }
             ],

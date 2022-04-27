@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	DatabaseName   = "preference"
-	CollectionName = "rooms"
+	RoomDatabaseName   = "preference"
+	RoomCollectionName = "rooms"
 )
 
 type RoomDAO struct {
@@ -23,13 +23,13 @@ type RoomDAO struct {
 
 func NewRoomDAO(session *mgo.Session) *RoomDAO {
 	return &RoomDAO{
-		collection: session.DB(DatabaseName).C(CollectionName),
+		collection: session.DB(RoomDatabaseName).C(RoomCollectionName),
 	}
 }
 
 func (d *RoomDAO) FindOneByID(ctx context.Context, roomID string) (*Room, error) {
 	var result Room
-	if err := d.collection.Find(bson.M{"_id": roomID}).One(&result); err != nil {
+	if err := d.collection.FindId(roomID).One(&result); err != nil {
 		return nil, err
 	}
 
