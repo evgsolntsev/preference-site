@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"net/mail"
 
 	"github.com/globalsign/mgo"
 	"go.mongodb.org/mongo-driver/bson"
@@ -56,7 +57,11 @@ func NewUserManager(dao *UserDAO) *UserManager {
 	}
 }
 
-func (m *UserManager) Create(ctx context.Context, login, password string) error {
+func (m *UserManager) Create(ctx context.Context, login, password, email string) error {
+	if _, err := mail.ParseAddress(email); err != nil {
+		return errors.New("invalid email")
+	}
+
 	_, err := m.dao.FindOneByLogin(ctx, login)
 	if err == nil {
 		return errors.New("login already exist")
@@ -72,8 +77,10 @@ func (m *UserManager) Create(ctx context.Context, login, password string) error 
 	}
 
 	newUser := &User{
-		Login:        login,
-		PasswordHash: hash,
+		Email:          email,
+		EmailConfirmed: false,
+		Login:          login,
+		PasswordHash:   hash,
 	}
 
 	return m.dao.Insert(ctx, newUser)

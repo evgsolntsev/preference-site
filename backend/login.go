@@ -73,13 +73,20 @@ func (m *LoginManager) Login(w http.ResponseWriter, request *http.Request) {
 	})
 }
 
+type RegisterRequest struct {
+	Email    string `json:"email"`
+	Login    string `json:"login"`
+	Password string `json:"password"`
+}
+
 func (m *LoginManager) Register(request *http.Request) (interface{}, error) {
-	var creds Creds
-	if err := json.NewDecoder(request.Body).Decode(&creds); err != nil {
+	var input RegisterRequest
+	if err := json.NewDecoder(request.Body).Decode(&input); err != nil {
 		return nil, err
 	}
 
-	if err := m.userManager.Create(request.Context(), creds.Login, creds.Password); err != nil {
+	err := m.userManager.Create(request.Context(), input.Login, input.Password, input.Email)
+	if err != nil {
 		return nil, err
 	}
 

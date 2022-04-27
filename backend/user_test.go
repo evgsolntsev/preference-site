@@ -38,24 +38,30 @@ func TestUser(t *testing.T) {
 func (s *UserSuite) TestCheckUnexisting() {
 	err := s.Manager.Check(s.Ctx, "unexisting", "pass")
 	require.Error(s.T(), err)
-	assert.Equal(s.T(), err.Error(), "login not found")
+	assert.Contains(s.T(), err.Error(), "login not found")
 }
 
 func (s *UserSuite) TestCheckWrongPassword() {
-	require.NoError(s.T(), s.Manager.Create(s.Ctx, "user1", "pass"))
+	require.NoError(s.T(), s.Manager.Create(s.Ctx, "user1", "pass", "some@mail.com"))
 	err := s.Manager.Check(s.Ctx, "user1", "wrong pass")
 	require.Error(s.T(), err)
-	assert.Equal(s.T(), err.Error(), "crypto/bcrypt: hashedPassword is not the hash of the given password")
+	assert.Contains(s.T(), err.Error(), "hashedPassword is not the hash of the given password")
 }
 
 func (s *UserSuite) TestCheckOK() {
-	require.NoError(s.T(), s.Manager.Create(s.Ctx, "user2", "pass"))
+	require.NoError(s.T(), s.Manager.Create(s.Ctx, "user2", "pass", "some@mail.com"))
 	require.NoError(s.T(), s.Manager.Check(s.Ctx, "user2", "pass"))
 }
 
 func (s *UserSuite) TestCreateExisting() {
-	require.NoError(s.T(), s.Manager.Create(s.Ctx, "user3", "pass"))
-	err := s.Manager.Create(s.Ctx, "user3", "pass")
+	require.NoError(s.T(), s.Manager.Create(s.Ctx, "user3", "pass", "some@mail.com"))
+	err := s.Manager.Create(s.Ctx, "user3", "pass", "some@mail.com")
 	require.Error(s.T(), err)
-	assert.Equal(s.T(), err.Error(), "login already exist")
+	assert.Contains(s.T(), err.Error(), "login already exist")
+}
+
+func (s *UserSuite) TestCreateWithInvalidMail() {
+	err := s.Manager.Create(s.Ctx, "user4", "pass", "broken email")
+	require.Error(s.T(), err)
+	assert.Contains(s.T(), err.Error(), "invalid email")
 }

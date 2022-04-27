@@ -105,6 +105,8 @@ func (r *Room) PlayerSideIndex(playerName string) int {
 }
 
 type User struct {
-	Login        string `bson:"_id"`
-	PasswordHash []byte `bson:"pass"`
+	Email          string `bson:"email"`
+	EmailConfirmed bool   `bson:"emailConfirmed"`
+	Login          string `bson:"_id"`
+	PasswordHash   []byte `bson:"pass"`
 }
