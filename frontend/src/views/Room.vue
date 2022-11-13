@@ -94,6 +94,11 @@ export default {
             "IsDisabled": () => (false),
             "Text": "Shuffle",
             "Click": this.shuffle
+        }, {
+            "IsShown": () => (this.onBuypack && (this.status === 0)),
+            "IsDisabled": () => (false),
+            "Text": "All pass",
+            "Click": this.allPass
         }];
 
         let result = [];
