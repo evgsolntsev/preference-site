@@ -240,6 +240,9 @@ func (s *RoomSuite) TestRoomManagerMove() {
 		Card:   Card{SuitClubs, "7"},
 		Player: "lol",
 	}}, updatedRoom.Center)
+
+	err = s.Manager.Move(s.Ctx, room.ID, "lol", 0)
+	require.Error(s.T(), err)
 }
 
 func (s *RoomSuite) TestRoomManagerTakeTrick() {

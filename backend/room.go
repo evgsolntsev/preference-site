@@ -365,6 +365,12 @@ func (m *RoomManager) Move(ctx context.Context, roomID, playerName string, index
 		return errors.New("wrong room status")
 	}
 
+	for _, centerCard := range room.Center {
+		if playerName == centerCard.Player {
+			return errors.New("player have made the move already")
+		}
+	}
+
 	playerIndex := -1
 	for i, side := range room.Sides {
 		if side.Name == playerName {
