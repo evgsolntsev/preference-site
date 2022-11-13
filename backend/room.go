@@ -422,6 +422,10 @@ func (m *RoomManager) TakeTrick(ctx context.Context, roomID, playerName string) 
 		return errors.New("wrong player name")
 	}
 
+	if len(room.Center) < 3 {
+		return errors.New("unable to take trick")
+	}
+
 	newCenter := []CenterCardInfo{}
 	if len(room.Sides[room.BuypackIndex].Cards) > 0 {
 		newCenter = []CenterCardInfo{{

@@ -300,6 +300,38 @@ func (s *RoomSuite) TestRoomManagerTakeTrick() {
 	assert.Equal(s.T(), 6, updatedRoom.Sides[2].Tricks)
 }
 
+func (s *RoomSuite) TestRoomManagerTakeTrickWithTwoCenterCards() {
+	room, err := s.DAO.Insert(s.Ctx, &Room{
+		Sides: []RoomSideInfo{{
+			Name:  "evgsol",
+			Cards: []Card{{SuitSpades, "A"}},
+		}, {
+			Name:  "solarka",
+			Cards: []Card{{SuitDiamonds, "A"}},
+		}, {
+			Name:   "lol",
+			Cards:  []Card{{SuitClubs, "7"}, {SuitClubs, "8"}},
+			Tricks: 5,
+		}, {
+			Name:  "kek",
+			Cards: []Card{{SuitHearts, "A"}},
+		}},
+		Center: []CenterCardInfo{{
+			Card:   Card{SuitSpades, "K"},
+			Player: "evgsol",
+		}, {
+			Card:   Card{SuitSpades, "Q"},
+			Player: "solarka",
+		}},
+		Status:       RoomStatusAllPass,
+		BuypackIndex: 0,
+	})
+	require.NoError(s.T(), err)
+
+	err = s.Manager.TakeTrick(s.Ctx, room.ID, "lol")
+	require.Error(s.T(), err)
+}
+
 func (s *RoomSuite) TestRoomManagerAllPass() {
 	room, err := s.DAO.Insert(s.Ctx, &Room{
 		Sides: []RoomSideInfo{{
