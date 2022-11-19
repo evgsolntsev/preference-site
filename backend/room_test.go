@@ -35,6 +35,10 @@ func TestRoom(t *testing.T) {
 	})
 }
 
+func (s *RoomSuite) TearDownTest() {
+	s.DAO.RemoveAll(s.Ctx)
+}
+
 func (s *RoomSuite) TestRoomDAOFindByPlayer() {
 	r := &Room{
 		Sides: []RoomSideInfo{{
@@ -73,7 +77,7 @@ func (s *RoomSuite) TestRoomManagerOpenBuypackOK() {
 			Name: "kek",
 		}},
 		BuypackIndex: 2,
-		Status:       RoomStatusCreated,
+		Status:       RoomStatusReady,
 	})
 	require.NoError(s.T(), err)
 
@@ -345,7 +349,7 @@ func (s *RoomSuite) TestRoomManagerAllPass() {
 			Name: "kek",
 		}},
 		BuypackIndex: 2,
-		Status:       RoomStatusCreated,
+		Status:       RoomStatusReady,
 	})
 	require.NoError(s.T(), err)
 
@@ -393,4 +397,207 @@ func (s *RoomSuite) TestRoomManagerChangeVisibility() {
 
 	assert.Equal(s.T(), RoomStatusBuypackOpened, updatedRoom.Status)
 	assert.False(s.T(), updatedRoom.Sides[3].Open)
+}
+
+func (s *RoomSuite) TestPlayerIn() {
+	s.Run("Smoke", func() {
+		room, err := s.DAO.Insert(s.Ctx, &Room{
+			Sides: []RoomSideInfo{{
+				Name: "evgsol",
+			}, {
+				Name: "solarka",
+			}, {
+				Name: "lol",
+			}, {
+				Name: EMPTY_SIDE,
+			}},
+			Status:       RoomStatusCreated,
+			PlayersCount: 3,
+		})
+		require.NoError(s.T(), err)
+
+		require.NoError(s.T(), s.Manager.PlayerIn(s.Ctx, room.ID, "kek"))
+
+		updatedRoom, err := s.DAO.FindOneByID(s.Ctx, room.ID)
+		require.NoError(s.T(), err)
+
+		require.Equal(s.T(), "kek", updatedRoom.Sides[3].Name)
+		require.Equal(s.T(), 4, updatedRoom.PlayersCount)
+	})
+
+	s.Run("Player already in room", func() {
+		_, err := s.DAO.Insert(s.Ctx, &Room{
+			Sides: []RoomSideInfo{{
+				Name: "evgsol",
+			}},
+			Status: RoomStatusCreated,
+		})
+		require.NoError(s.T(), err)
+
+		room, err := s.DAO.Insert(s.Ctx, &Room{
+			Status: RoomStatusCreated,
+		})
+		require.NoError(s.T(), err)
+
+		err = s.Manager.PlayerIn(s.Ctx, room.ID, "evgsol")
+		require.Error(s.T(), err)
+		require.Equal(s.T(), "player is already in room", err.Error())
+	})
+
+	s.Run("Wrong room status", func() {
+		room, err := s.DAO.Insert(s.Ctx, &Room{
+			Status: RoomStatusReady,
+		})
+		require.NoError(s.T(), err)
+
+		err = s.Manager.PlayerIn(s.Ctx, room.ID, "donald trump")
+		require.Error(s.T(), err)
+		require.Equal(s.T(), "wrong room status", err.Error())
+	})
+
+	s.Run("No empty sides", func() {
+		room, err := s.DAO.Insert(s.Ctx, &Room{
+			Sides: []RoomSideInfo{{
+				Name: "evgsol",
+			}, {
+				Name: "solarka",
+			}, {
+				Name: "lol",
+			}, {
+				Name: "kek",
+			}},
+			Status:       RoomStatusCreated,
+			PlayersCount: 4,
+		})
+		require.NoError(s.T(), err)
+
+		err = s.Manager.PlayerIn(s.Ctx, room.ID, "joe biden")
+		require.Error(s.T(), err)
+		require.Equal(s.T(), "no empty sides", err.Error())
+	})
+}
+
+func (s *RoomSuite) TestRoomReady() {
+	s.Run("Smoke", func() {
+		room, err := s.DAO.Insert(s.Ctx, &Room{
+			Sides: []RoomSideInfo{{
+				Name: "evgsol",
+			}, {
+				Name: "solarka",
+			}, {
+				Name: "lol",
+			}, {
+				Name: "kek",
+			}},
+			PlayersCount: 4,
+			Status:       RoomStatusCreated,
+		})
+
+		err = s.Manager.RoomReady(s.Ctx, room.ID)
+		require.NoError(s.T(), err)
+
+		updatedRoom, err := s.DAO.FindOneByID(s.Ctx, room.ID)
+		require.NoError(s.T(), err)
+
+		require.Equal(s.T(), RoomStatusReady, updatedRoom.Status)
+
+		err = s.Manager.RoomReady(s.Ctx, room.ID)
+		require.NoError(s.T(), err)
+	})
+
+	s.Run("WrongStatus", func() {
+		room, err := s.DAO.Insert(s.Ctx, &Room{
+			Sides: []RoomSideInfo{{
+				Name: "evgsol",
+			}, {
+				Name: "solarka",
+			}, {
+				Name: "lol",
+			}, {
+				Name: "kek",
+			}},
+			PlayersCount: 4,
+			Status:       RoomStatusAllPass,
+		})
+
+		err = s.Manager.RoomReady(s.Ctx, room.ID)
+		require.Error(s.T(), err)
+		require.Equal(s.T(), "wrong room status", err.Error())
+	})
+
+	s.Run("WrongPlayersCount", func() {
+		room, err := s.DAO.Insert(s.Ctx, &Room{
+			Sides: []RoomSideInfo{{
+				Name: "evgsol",
+			}, {
+				Name: "solarka",
+			}},
+			PlayersCount: 2,
+			Status:       RoomStatusCreated,
+		})
+
+		err = s.Manager.RoomReady(s.Ctx, room.ID)
+		require.Error(s.T(), err)
+		require.Equal(s.T(), "wrong players count", err.Error())
+	})
+}
+
+func (s *RoomSuite) TestPlayerOut() {
+	s.Run("Smoke", func() {
+		room, err := s.DAO.Insert(s.Ctx, &Room{
+			Sides: []RoomSideInfo{{
+				Name: "evgsol",
+			}, {
+				Name: "solarka",
+			}, {
+				Name: "lol",
+			}, {
+				Name: "kek",
+			}},
+			Status:       RoomStatusAllPass,
+			PlayersCount: 4,
+		})
+		require.NoError(s.T(), err)
+
+		require.NoError(s.T(), s.Manager.PlayerOut(s.Ctx, "solarka"))
+
+		updatedRoom, err := s.DAO.FindOneByID(s.Ctx, room.ID)
+		require.NoError(s.T(), err)
+
+		require.Equal(s.T(), EMPTY_SIDE, updatedRoom.Sides[1].Name)
+		require.Equal(s.T(), 3, updatedRoom.PlayersCount)
+		require.Equal(s.T(), RoomStatusCreated, updatedRoom.Status)
+	})
+
+	s.Run("Last player in room", func() {
+		room, err := s.DAO.Insert(s.Ctx, &Room{
+			Sides: []RoomSideInfo{{
+				Name: "brad pitt",
+			}},
+			PlayersCount: 1,
+			Status:       RoomStatusCreated,
+		})
+		require.NoError(s.T(), err)
+
+		err = s.Manager.PlayerOut(s.Ctx, "brad pitt")
+		require.NoError(s.T(), err)
+
+		_, err = s.DAO.FindOneByID(s.Ctx, room.ID)
+		require.Error(s.T(), err)
+		require.IsType(s.T(), mgo.ErrNotFound, err)
+	})
+
+	s.Run("Player is not in room", func() {
+		err := s.Manager.PlayerOut(s.Ctx, "elon musk")
+		require.Error(s.T(), err)
+		require.Equal(s.T(), "player is not in room", err.Error())
+	})
+}
+
+func (s *RoomSuite) TestCreateRoom() {
+	s.Require().NoError(s.Manager.CreateRoom(s.Ctx, "evgsol"))
+
+	room, err := s.Manager.GetOneForPlayer(s.Ctx, "evgsol")
+	s.Require().NoError(err)
+	s.NotNil(room)
 }

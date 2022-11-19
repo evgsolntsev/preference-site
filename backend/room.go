@@ -45,6 +45,15 @@ func (d *RoomDAO) FindOneByPlayer(ctx context.Context, playerName string) (*Room
 	return &result, nil
 }
 
+func (d *RoomDAO) FindAll(ctx context.Context) ([]Room, error) {
+	var result []Room
+	if err := d.collection.Find(bson.M{}).All(&result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
 func (d *RoomDAO) Insert(ctx context.Context, room *Room) (*Room, error) {
 	if len(room.ID) == 0 {
 		room.ID = primitive.NewObjectID().Hex()
@@ -61,10 +70,24 @@ func (d *RoomDAO) Update(ctx context.Context, room *Room) error {
 	return d.collection.UpdateId(room.ID, room)
 }
 
-func (d *RoomDAO) OpenBuypack(ctx context.Context, roomID string, buypackIndex int) error {
+func (d *RoomDAO) ToReady(ctx context.Context, roomID string) error {
 	return d.collection.Update(bson.M{
 		"_id":    roomID,
 		"status": RoomStatusCreated,
+		"playersCount": bson.M{
+			"$in": []int{3, 4},
+		},
+	}, bson.M{
+		"$set": bson.M{
+			"status": RoomStatusReady,
+		},
+	})
+}
+
+func (d *RoomDAO) OpenBuypack(ctx context.Context, roomID string, buypackIndex int) error {
+	return d.collection.Update(bson.M{
+		"_id":    roomID,
+		"status": RoomStatusReady,
 	}, bson.M{
 		"$set": bson.M{
 			"status": RoomStatusBuypackOpened,
@@ -170,7 +193,7 @@ func (d *RoomDAO) AllPass(
 ) error {
 	return d.collection.Update(bson.M{
 		"_id":    roomID,
-		"status": RoomStatusCreated,
+		"status": RoomStatusReady,
 	}, bson.M{
 		"$set": bson.M{
 			"status": RoomStatusAllPass,
@@ -195,6 +218,12 @@ func (d *RoomDAO) ChangeVisibility(
 	})
 }
 
+func (d *RoomDAO) Remove(ctx context.Context, roomID string) error {
+	return d.collection.Remove(bson.M{
+		"_id": roomID,
+	})
+}
+
 func (d *RoomDAO) RemoveAll(ctx context.Context) error {
 	_, err := d.collection.RemoveAll(bson.M{})
 	return err
@@ -210,8 +239,29 @@ func NewRoomManager(dao *RoomDAO) *RoomManager {
 	}
 }
 
+func (m *RoomManager) GetAll(ctx context.Context) ([]RoomView, error) {
+	rooms, err := m.dao.FindAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []RoomView
+	for _, room := range rooms {
+		result = append(result, room.ToView())
+	}
+
+	return result, nil
+}
+
 func (m *RoomManager) GetOneForPlayer(ctx context.Context, playerName string) (*Room, error) {
-	return m.dao.FindOneByPlayer(ctx, playerName)
+	room, err := m.dao.FindOneByPlayer(ctx, playerName)
+	if errors.Is(err, mgo.ErrNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return room, nil
 }
 
 func (m *RoomManager) Shuffle(ctx context.Context, roomID, playerName string) error {
@@ -253,7 +303,7 @@ func (m *RoomManager) Shuffle(ctx context.Context, roomID, playerName string) er
 		playersIndexes = []int{(playerIndex + 1) % 4, (playerIndex + 2) % 4, (playerIndex + 3) % 4}
 	}
 
-	room.Status = RoomStatusCreated
+	room.Status = RoomStatusReady
 	room.Sides[buypackIndex].Cards = allCards[:2]
 	room.Sides[buypackIndex].Tricks = 0
 	room.Sides[buypackIndex].Open = false
@@ -278,7 +328,7 @@ func (m *RoomManager) OpenBuypack(ctx context.Context, roomID string) error {
 		return err
 	}
 
-	if room.Status != RoomStatusCreated {
+	if room.Status != RoomStatusReady {
 		return errors.New("wrong room status")
 	}
 
@@ -442,7 +492,7 @@ func (m *RoomManager) AllPass(ctx context.Context, roomID string) error {
 		return err
 	}
 
-	if room.Status != RoomStatusCreated {
+	if room.Status != RoomStatusReady {
 		return errors.New("wrong room status")
 	}
 
@@ -472,4 +522,124 @@ func (m *RoomManager) ChangeVisibility(ctx context.Context, roomID, playerName s
 	}
 
 	return m.dao.ChangeVisibility(ctx, roomID, playerIndex, !room.Sides[playerIndex].Open)
+}
+
+func (m *RoomManager) PlayerIn(ctx context.Context, roomID, playerName string) error {
+	room, err := m.GetOneForPlayer(ctx, playerName)
+	if err != nil {
+		return err
+	}
+
+	if room != nil {
+		if room.ID == roomID {
+			return nil
+		}
+		return errors.New("player is already in room")
+	}
+
+	room, err = m.dao.FindOneByID(ctx, roomID)
+	if err != nil {
+		return err
+	}
+
+	if room.Status != RoomStatusCreated {
+		return errors.New("wrong room status")
+	}
+
+	if room.PlayersCount >= 4 {
+		return errors.New("no empty sides")
+	}
+
+	emptyIndex := -1
+	for i, side := range room.Sides {
+		if side.Name == EMPTY_SIDE {
+			emptyIndex = i
+		}
+	}
+
+	if emptyIndex == -1 {
+		return errors.New("something went wrong")
+	}
+
+	room.Sides[emptyIndex].Name = playerName
+	room.PlayersCount++
+
+	return m.dao.Update(ctx, room)
+}
+
+func (m *RoomManager) RoomReady(ctx context.Context, roomID string) error {
+	room, err := m.dao.FindOneByID(ctx, roomID)
+	if err != nil {
+		return err
+	}
+
+	if room.Status == RoomStatusReady {
+		return nil
+	}
+
+	if room.Status != RoomStatusCreated {
+		return errors.New("wrong room status")
+	}
+
+	if room.PlayersCount < 3 || room.PlayersCount > 4 {
+		return errors.New("wrong players count")
+	}
+
+	return m.dao.ToReady(ctx, roomID)
+}
+
+func (m *RoomManager) PlayerOut(ctx context.Context, playerName string) error {
+	room, err := m.GetOneForPlayer(ctx, playerName)
+	if err != nil {
+		return err
+	}
+
+	if room == nil {
+		return errors.New("player is not in room")
+	}
+
+	playerIndex := -1
+	for i, side := range room.Sides {
+		if side.Name == playerName {
+			playerIndex = i
+		}
+	}
+
+	room.Sides[playerIndex].Name = EMPTY_SIDE
+	room.PlayersCount--
+	room.Status = RoomStatusCreated
+
+	if room.PlayersCount == 0 {
+		return m.dao.Remove(ctx, room.ID)
+	}
+
+	return m.dao.Update(ctx, room)
+}
+
+func (m *RoomManager) CreateRoom(ctx context.Context, playerName string) error {
+	room, err := m.GetOneForPlayer(ctx, playerName)
+	if err != nil {
+		return err
+	}
+
+	if room != nil {
+		return nil
+	}
+
+	newRoom := &Room{
+		Sides: []RoomSideInfo{{
+			Name: playerName,
+		}, {
+			Name: EMPTY_SIDE,
+		}, {
+			Name: EMPTY_SIDE,
+		}, {
+			Name: EMPTY_SIDE,
+		}},
+		Status:       RoomStatusCreated,
+		PlayersCount: 1,
+		BuypackIndex: 0,
+	}
+	_, err = m.dao.Insert(ctx, newRoom)
+	return err
 }

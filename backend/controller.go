@@ -155,3 +155,48 @@ func (c *Controller) ChangeVisibility(request *http.Request, playerName string) 
 
 	return nil, nil
 }
+
+type PlayerInRequest struct {
+	RoomID string `json:"roomId"`
+}
+
+func (c *Controller) PlayerIn(request *http.Request, playerName string) (interface{}, error) {
+	var req PlayerInRequest
+	if err := json.NewDecoder(request.Body).Decode(&req); err != nil {
+		return nil, errors.New("bad request")
+	}
+
+	err := c.roomManager.PlayerIn(request.Context(), req.RoomID, playerName)
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func (c *Controller) PlayerOut(request *http.Request, playerName string) (interface{}, error) {
+	err := c.roomManager.PlayerOut(request.Context(), playerName)
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func (c *Controller) RoomReady(request *http.Request, playerName string) (interface{}, error) {
+	err := c.roomManager.RoomReady(request.Context(), playerName)
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func (c *Controller) CreateRoom(request *http.Request, playerName string) (interface{}, error) {
+	err := c.roomManager.CreateRoom(request.Context(), playerName)
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}

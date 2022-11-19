@@ -52,6 +52,11 @@ func main() {
 	mux.Handle("/allPass", handlers.LoggingHandler(os.Stdout, decorate(loginRequired(controller.AllPass))))
 	mux.Handle("/changeVisibility", handlers.LoggingHandler(os.Stdout, decorate(loginRequired(controller.ChangeVisibility))))
 
+	mux.Handle("/playerIn", handlers.LoggingHandler(os.Stdout, decorate(loginRequired(controller.PlayerIn))))
+	mux.Handle("/playerOut", handlers.LoggingHandler(os.Stdout, decorate(loginRequired(controller.PlayerOut))))
+	mux.Handle("/roomReady", handlers.LoggingHandler(os.Stdout, decorate(loginRequired(controller.RoomReady))))
+	mux.Handle("/createRoom", handlers.LoggingHandler(os.Stdout, decorate(loginRequired(controller.CreateRoom))))
+
 	c := cors.New(cors.Options{
 		AllowedOrigins:   Config.Hostnames,
 		AllowCredentials: true,

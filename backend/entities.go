@@ -7,11 +7,12 @@ type Player struct {
 type RoomStatus int
 
 const (
-	RoomStatusCreated       RoomStatus = 0
+	RoomStatusReady         RoomStatus = 0
 	RoomStatusPlaying       RoomStatus = 1
 	RoomStatusBuypackOpened RoomStatus = 2
 	RoomStatusBuypackTaken  RoomStatus = 3
 	RoomStatusAllPass       RoomStatus = 4
+	RoomStatusCreated       RoomStatus = 5
 )
 
 type Suit string
@@ -84,6 +85,12 @@ type RoomSideInfo struct {
 	Open   bool   `json:"open" bson:"open"`
 }
 
+type RoomView struct {
+	ID      string     `json:"id"`
+	Players []string   `json:"players"`
+	Status  RoomStatus `json:"status"`
+}
+
 type Room struct {
 	ID           string           `json:"id" bson:"_id"`
 	Sides        []RoomSideInfo   `json:"sides" bson:"sides"`
@@ -92,6 +99,18 @@ type Room struct {
 	Status       RoomStatus       `json:"status" bson:"status"`
 	PlayersCount int              `json:"playersCount" bson:"playersCount"`
 	BuypackIndex int              `json:"buypackIndex" bson:"buypackIndex"`
+}
+
+func (r Room) ToView() RoomView {
+	var players []string
+	for _, side := range r.Sides {
+		players = append(players, side.Name)
+	}
+	return RoomView{
+		ID:      r.ID,
+		Players: players,
+		Status:  r.Status,
+	}
 }
 
 func (r *Room) PlayerSideIndex(playerName string) int {
@@ -103,6 +122,8 @@ func (r *Room) PlayerSideIndex(playerName string) int {
 
 	return -1
 }
+
+const EMPTY_SIDE = ""
 
 type User struct {
 	Email          string `bson:"email"`
