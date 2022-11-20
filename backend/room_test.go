@@ -493,7 +493,7 @@ func (s *RoomSuite) TestRoomReady() {
 			Status:       RoomStatusCreated,
 		})
 
-		err = s.Manager.RoomReady(s.Ctx, room.ID)
+		err = s.Manager.RoomReady(s.Ctx, "evgsol")
 		require.NoError(s.T(), err)
 
 		updatedRoom, err := s.DAO.FindOneByID(s.Ctx, room.ID)
@@ -501,12 +501,12 @@ func (s *RoomSuite) TestRoomReady() {
 
 		require.Equal(s.T(), RoomStatusReady, updatedRoom.Status)
 
-		err = s.Manager.RoomReady(s.Ctx, room.ID)
+		err = s.Manager.RoomReady(s.Ctx, "evgsol")
 		require.NoError(s.T(), err)
 	})
 
 	s.Run("WrongStatus", func() {
-		room, err := s.DAO.Insert(s.Ctx, &Room{
+		_, err := s.DAO.Insert(s.Ctx, &Room{
 			Sides: []RoomSideInfo{{
 				Name: "evgsol",
 			}, {
@@ -514,21 +514,21 @@ func (s *RoomSuite) TestRoomReady() {
 			}, {
 				Name: "lol",
 			}, {
-				Name: "kek",
+				Name: "elon mask",
 			}},
 			PlayersCount: 4,
 			Status:       RoomStatusAllPass,
 		})
 
-		err = s.Manager.RoomReady(s.Ctx, room.ID)
+		err = s.Manager.RoomReady(s.Ctx, "elon mask")
 		require.Error(s.T(), err)
 		require.Equal(s.T(), "wrong room status", err.Error())
 	})
 
 	s.Run("WrongPlayersCount", func() {
-		room, err := s.DAO.Insert(s.Ctx, &Room{
+		_, err := s.DAO.Insert(s.Ctx, &Room{
 			Sides: []RoomSideInfo{{
-				Name: "evgsol",
+				Name: "joe biden",
 			}, {
 				Name: "solarka",
 			}},
@@ -536,7 +536,7 @@ func (s *RoomSuite) TestRoomReady() {
 			Status:       RoomStatusCreated,
 		})
 
-		err = s.Manager.RoomReady(s.Ctx, room.ID)
+		err = s.Manager.RoomReady(s.Ctx, "joe biden")
 		require.Error(s.T(), err)
 		require.Equal(s.T(), "wrong players count", err.Error())
 	})
@@ -600,4 +600,19 @@ func (s *RoomSuite) TestCreateRoom() {
 	room, err := s.Manager.GetOneForPlayer(s.Ctx, "evgsol")
 	s.Require().NoError(err)
 	s.NotNil(room)
+}
+
+func (s *RoomSuite) TestGetAll() {
+	room1, err := s.DAO.Insert(s.Ctx, &Room{})
+	s.Require().NoError(err)
+	room2, err := s.DAO.Insert(s.Ctx, &Room{})
+	s.Require().NoError(err)
+
+	rooms, err := s.Manager.GetAll(s.Ctx)
+	s.Require().NoError(err)
+
+	if s.Len(rooms, 2) {
+		s.Equal(room1.ID.String(), rooms[0].ID)
+		s.Equal(room2.ID.String(), rooms[1].ID)
+	}
 }

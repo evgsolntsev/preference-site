@@ -9,7 +9,6 @@ import (
 
 	"github.com/globalsign/mgo"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 var (
@@ -27,7 +26,7 @@ func NewRoomDAO(session *mgo.Session) *RoomDAO {
 	}
 }
 
-func (d *RoomDAO) FindOneByID(ctx context.Context, roomID string) (*Room, error) {
+func (d *RoomDAO) FindOneByID(ctx context.Context, roomID RoomID) (*Room, error) {
 	var result Room
 	if err := d.collection.FindId(roomID).One(&result); err != nil {
 		return nil, err
@@ -55,8 +54,8 @@ func (d *RoomDAO) FindAll(ctx context.Context) ([]Room, error) {
 }
 
 func (d *RoomDAO) Insert(ctx context.Context, room *Room) (*Room, error) {
-	if len(room.ID) == 0 {
-		room.ID = primitive.NewObjectID().Hex()
+	if room.ID.IsZero() {
+		room.ID = NewRoomID()
 	}
 
 	if err := d.collection.Insert(room); err != nil {
@@ -70,7 +69,7 @@ func (d *RoomDAO) Update(ctx context.Context, room *Room) error {
 	return d.collection.UpdateId(room.ID, room)
 }
 
-func (d *RoomDAO) ToReady(ctx context.Context, roomID string) error {
+func (d *RoomDAO) ToReady(ctx context.Context, roomID RoomID) error {
 	return d.collection.Update(bson.M{
 		"_id":    roomID,
 		"status": RoomStatusCreated,
@@ -84,7 +83,7 @@ func (d *RoomDAO) ToReady(ctx context.Context, roomID string) error {
 	})
 }
 
-func (d *RoomDAO) OpenBuypack(ctx context.Context, roomID string, buypackIndex int) error {
+func (d *RoomDAO) OpenBuypack(ctx context.Context, roomID RoomID, buypackIndex int) error {
 	return d.collection.Update(bson.M{
 		"_id":    roomID,
 		"status": RoomStatusReady,
@@ -98,7 +97,7 @@ func (d *RoomDAO) OpenBuypack(ctx context.Context, roomID string, buypackIndex i
 
 func (d *RoomDAO) TakeBuypack(
 	ctx context.Context,
-	roomID string,
+	roomID RoomID,
 	buypackIndex, playerIndex int,
 	newPlayerCards []Card,
 ) error {
@@ -116,7 +115,7 @@ func (d *RoomDAO) TakeBuypack(
 
 func (d *RoomDAO) Drop(
 	ctx context.Context,
-	roomID string,
+	roomID RoomID,
 	playerIndex int,
 	newPlayerCards []Card,
 ) error {
@@ -133,7 +132,7 @@ func (d *RoomDAO) Drop(
 
 func (d *RoomDAO) Move(
 	ctx context.Context,
-	roomID string,
+	roomID RoomID,
 	playerIndex int,
 	newCenterCard CenterCardInfo,
 	newPlayerCards []Card,
@@ -158,7 +157,7 @@ func (d *RoomDAO) Move(
 
 func (d *RoomDAO) TakeTrick(
 	ctx context.Context,
-	roomID string,
+	roomID RoomID,
 	buypackIndex int,
 	playerIndex int,
 	oldCenterCards []CenterCardInfo,
@@ -186,7 +185,7 @@ func (d *RoomDAO) TakeTrick(
 
 func (d *RoomDAO) AllPass(
 	ctx context.Context,
-	roomID string,
+	roomID RoomID,
 	buypackIndex int,
 	newBuypackCards []Card,
 	newCenterCards []CenterCardInfo,
@@ -205,7 +204,7 @@ func (d *RoomDAO) AllPass(
 
 func (d *RoomDAO) ChangeVisibility(
 	ctx context.Context,
-	roomID string,
+	roomID RoomID,
 	playerIndex int,
 	open bool,
 ) error {
@@ -218,7 +217,7 @@ func (d *RoomDAO) ChangeVisibility(
 	})
 }
 
-func (d *RoomDAO) Remove(ctx context.Context, roomID string) error {
+func (d *RoomDAO) Remove(ctx context.Context, roomID RoomID) error {
 	return d.collection.Remove(bson.M{
 		"_id": roomID,
 	})
@@ -264,7 +263,7 @@ func (m *RoomManager) GetOneForPlayer(ctx context.Context, playerName string) (*
 	return room, nil
 }
 
-func (m *RoomManager) Shuffle(ctx context.Context, roomID, playerName string) error {
+func (m *RoomManager) Shuffle(ctx context.Context, roomID RoomID, playerName string) error {
 	room, err := m.dao.FindOneByPlayer(ctx, playerName)
 	if err != nil {
 		return err
@@ -322,7 +321,7 @@ func (m *RoomManager) Shuffle(ctx context.Context, roomID, playerName string) er
 	return m.dao.Update(ctx, room)
 }
 
-func (m *RoomManager) OpenBuypack(ctx context.Context, roomID string) error {
+func (m *RoomManager) OpenBuypack(ctx context.Context, roomID RoomID) error {
 	room, err := m.dao.FindOneByID(ctx, roomID)
 	if err != nil {
 		return err
@@ -335,7 +334,7 @@ func (m *RoomManager) OpenBuypack(ctx context.Context, roomID string) error {
 	return m.dao.OpenBuypack(ctx, roomID, room.BuypackIndex)
 }
 
-func (m *RoomManager) TakeBuypack(ctx context.Context, roomID, playerName string) error {
+func (m *RoomManager) TakeBuypack(ctx context.Context, roomID RoomID, playerName string) error {
 	room, err := m.dao.FindOneByID(ctx, roomID)
 	if err != nil {
 		return err
@@ -364,7 +363,7 @@ func (m *RoomManager) TakeBuypack(ctx context.Context, roomID, playerName string
 	return m.dao.TakeBuypack(ctx, roomID, room.BuypackIndex, playerIndex, cards)
 }
 
-func (m *RoomManager) Drop(ctx context.Context, roomID, playerName string, indexes []int) error {
+func (m *RoomManager) Drop(ctx context.Context, roomID RoomID, playerName string, indexes []int) error {
 	room, err := m.dao.FindOneByID(ctx, roomID)
 	if err != nil {
 		return err
@@ -405,7 +404,7 @@ func (m *RoomManager) Drop(ctx context.Context, roomID, playerName string, index
 	return m.dao.Drop(ctx, roomID, playerIndex, newCards)
 }
 
-func (m *RoomManager) Move(ctx context.Context, roomID, playerName string, index int) error {
+func (m *RoomManager) Move(ctx context.Context, roomID RoomID, playerName string, index int) error {
 	room, err := m.dao.FindOneByID(ctx, roomID)
 	if err != nil {
 		return err
@@ -451,7 +450,7 @@ func (m *RoomManager) Move(ctx context.Context, roomID, playerName string, index
 	return m.dao.Move(ctx, roomID, playerIndex, newCenterCard, newCards)
 }
 
-func (m *RoomManager) TakeTrick(ctx context.Context, roomID, playerName string) error {
+func (m *RoomManager) TakeTrick(ctx context.Context, roomID RoomID, playerName string) error {
 	room, err := m.dao.FindOneByID(ctx, roomID)
 	if err != nil {
 		return err
@@ -486,7 +485,7 @@ func (m *RoomManager) TakeTrick(ctx context.Context, roomID, playerName string) 
 	return m.dao.TakeTrick(ctx, roomID, room.BuypackIndex, playerIndex, room.Center, newCenter)
 }
 
-func (m *RoomManager) AllPass(ctx context.Context, roomID string) error {
+func (m *RoomManager) AllPass(ctx context.Context, roomID RoomID) error {
 	room, err := m.dao.FindOneByID(ctx, roomID)
 	if err != nil {
 		return err
@@ -504,7 +503,7 @@ func (m *RoomManager) AllPass(ctx context.Context, roomID string) error {
 	return m.dao.AllPass(ctx, roomID, room.BuypackIndex, newBuypackCards, newCenterCards)
 }
 
-func (m *RoomManager) ChangeVisibility(ctx context.Context, roomID, playerName string) error {
+func (m *RoomManager) ChangeVisibility(ctx context.Context, roomID RoomID, playerName string) error {
 	room, err := m.dao.FindOneByID(ctx, roomID)
 	if err != nil {
 		return err
@@ -524,7 +523,7 @@ func (m *RoomManager) ChangeVisibility(ctx context.Context, roomID, playerName s
 	return m.dao.ChangeVisibility(ctx, roomID, playerIndex, !room.Sides[playerIndex].Open)
 }
 
-func (m *RoomManager) PlayerIn(ctx context.Context, roomID, playerName string) error {
+func (m *RoomManager) PlayerIn(ctx context.Context, roomID RoomID, playerName string) error {
 	room, err := m.GetOneForPlayer(ctx, playerName)
 	if err != nil {
 		return err
@@ -567,8 +566,8 @@ func (m *RoomManager) PlayerIn(ctx context.Context, roomID, playerName string) e
 	return m.dao.Update(ctx, room)
 }
 
-func (m *RoomManager) RoomReady(ctx context.Context, roomID string) error {
-	room, err := m.dao.FindOneByID(ctx, roomID)
+func (m *RoomManager) RoomReady(ctx context.Context, playerName string) error {
+	room, err := m.GetOneForPlayer(ctx, playerName)
 	if err != nil {
 		return err
 	}
@@ -585,7 +584,7 @@ func (m *RoomManager) RoomReady(ctx context.Context, roomID string) error {
 		return errors.New("wrong players count")
 	}
 
-	return m.dao.ToReady(ctx, roomID)
+	return m.dao.ToReady(ctx, room.ID)
 }
 
 func (m *RoomManager) PlayerOut(ctx context.Context, playerName string) error {

@@ -1,5 +1,9 @@
 package main
 
+import (
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
+
 type Player struct {
 	Name string
 }
@@ -86,13 +90,54 @@ type RoomSideInfo struct {
 }
 
 type RoomView struct {
-	ID      string     `json:"id"`
-	Players []string   `json:"players"`
-	Status  RoomStatus `json:"status"`
+	ID      string   `json:"id"`
+	Players []string `json:"players"`
+	Status  string   `json:"status"`
+}
+
+type RoomID primitive.ObjectID
+
+func (id RoomID) String() string {
+	return primitive.ObjectID(id).Hex()
+}
+
+func (id RoomID) MarshalText() ([]byte, error) {
+	return []byte(id.String()), nil
+}
+
+func (id *RoomID) UnmarshalText(data []byte) error {
+	res, err := NewRoomIDFromString(string(data))
+	if err != nil {
+		return err
+	}
+
+	*id = res
+	return nil
+}
+
+func NewRoomID() RoomID {
+	return RoomID(primitive.NewObjectID())
+}
+
+func ZeroRoomID() RoomID {
+	return RoomID{}
+}
+
+func NewRoomIDFromString(hex string) (RoomID, error) {
+	raw, err := primitive.ObjectIDFromHex(hex)
+	if err != nil {
+		return ZeroRoomID(), err
+	}
+
+	return RoomID(raw), nil
+}
+
+func (id RoomID) IsZero() bool {
+	return id == ZeroRoomID()
 }
 
 type Room struct {
-	ID           string           `json:"id" bson:"_id"`
+	ID           RoomID           `json:"id" bson:"_id"`
 	Sides        []RoomSideInfo   `json:"sides" bson:"sides"`
 	Center       []CenterCardInfo `json:"center" bson:"center"`
 	LastTrick    []CenterCardInfo `json:"lastTrick" bson:"lastTrick"`
@@ -104,13 +149,22 @@ type Room struct {
 func (r Room) ToView() RoomView {
 	var players []string
 	for _, side := range r.Sides {
-		players = append(players, side.Name)
+		if side.Name != EMPTY_SIDE {
+			players = append(players, side.Name)
+		}
 	}
-	return RoomView{
-		ID:      r.ID,
+
+	res := RoomView{
+		ID:      r.ID.String(),
 		Players: players,
-		Status:  r.Status,
+		Status:  "playing",
 	}
+
+	if r.Status == RoomStatusCreated && r.PlayersCount < 4 {
+		res.Status = "available"
+	}
+
+	return res
 }
 
 func (r *Room) PlayerSideIndex(playerName string) int {

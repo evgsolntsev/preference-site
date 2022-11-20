@@ -52,6 +52,7 @@ func main() {
 	mux.Handle("/allPass", handlers.LoggingHandler(os.Stdout, decorate(loginRequired(controller.AllPass))))
 	mux.Handle("/changeVisibility", handlers.LoggingHandler(os.Stdout, decorate(loginRequired(controller.ChangeVisibility))))
 
+	mux.Handle("/rooms", handlers.LoggingHandler(os.Stdout, decorate(controller.GetRooms)))
 	mux.Handle("/playerIn", handlers.LoggingHandler(os.Stdout, decorate(loginRequired(controller.PlayerIn))))
 	mux.Handle("/playerOut", handlers.LoggingHandler(os.Stdout, decorate(loginRequired(controller.PlayerOut))))
 	mux.Handle("/roomReady", handlers.LoggingHandler(os.Stdout, decorate(loginRequired(controller.RoomReady))))
@@ -79,6 +80,7 @@ func decorate(f func(*http.Request) (interface{}, error)) http.Handler {
 			// TODO: implement specific exceptions and mapping to status codes
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
+			log.Println(err)
 		}
 	})
 }

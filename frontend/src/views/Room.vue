@@ -16,7 +16,7 @@
     <img v-for="(cardInfo, index) in right.cards" :key="index" class="horizontal" :src="getImgUrl(cardInfo, 'CC')" :style="getGridRowStyle(index)">
   </div>
   <div class="down grid-container">
-    <img v-for="(cardInfo, index) in down.cards" :key="index" :class="'vertical '+isSelected(index)+' '+isHover(index)" :src="getImgUrl(cardInfo, '')" :style="getGridColumnStyle(index)" @mouseover="hovered[index]=true" @mouseleave="hovered[index]=false" @click="selected[index]=!selected[index]">
+    <img v-for="(cardInfo, index) in down.cards" :key="index" :class="'vertic>al '+isSelected(index)+' '+isHover(index)" :src="getImgUrl(cardInfo, '')" :style="getGridColumnStyle(index)" @mouseover="hovered[index]=true" @mouseleave="hovered[index]=false" @click="selected[index]=!selected[index]">
   </div>
   <div class="players">
     <template v-if="isLogged()">
@@ -24,6 +24,8 @@
       <div> Up player: {{ playerDescription(up) }}</div>
       <div> Right player: {{ playerDescription(right) }}</div>
       <div> Down player (you): {{ playerDescription(down) }}</div>
+      <button @click="logout">Logout?</button>
+      <button @click="leaveRoom">Leave room?</button>
     </template>
   </div>
   <div class="buttons btn-group">
@@ -75,7 +77,7 @@ export default {
             "Text": "Drop",
             "Click": this.drop
         }, {
-            "IsShown": () => (!this.onBuypack),
+            "IsShown": () => (!this.onBuypack && (this.status !== 5)),
             "IsDisabled": () => (false),
             "Text": showText,
             "Click": this.changeVisibility
@@ -90,7 +92,7 @@ export default {
             "Text": "Take trick",
             "Click": this.takeTrick
         }, {
-            "IsShown": () => (true),
+            "IsShown": () => (this.status !== 5),
             "IsDisabled": () => (false),
             "Text": "Shuffle",
             "Click": this.shuffle
@@ -99,6 +101,11 @@ export default {
             "IsDisabled": () => (false),
             "Text": "All pass",
             "Click": this.allPass
+        }, {
+            "IsShown": () => (this.status === 5),
+            "IsDisabled": () => (this.playersCount < 3),
+            "Text": "Start",
+            "Click": this.start
         }];
 
         let result = [];
@@ -121,6 +128,15 @@ export default {
             }
         }
         return indexes
+    },
+    logout() {
+        VueCookies.remove("player")
+        this.$router.push("/login");
+    },
+    leaveRoom() {
+        this.axios.get(this.backend+"/playerOut").then(() => {
+            this.$router.push("/lobby");
+        }).catch(this.updateLastError);
     },
     countSelected() {
         return this.getSelected().length
@@ -161,36 +177,41 @@ export default {
     },
     fetchData() {
       if (this.isLogged()) {
-        this.axios.get(this.backend+"/room").then(response => {
-          this.room = response.data;
-          let playerIndex = -1;
-          for (let i = 0; i < response.data.sides.length; i++) {
-            if (response.data.sides[i].name == this.playerName()) {
-              playerIndex = i;
-            }
-          }
-          if (playerIndex === -1) {
-            console.log("player not found: "+response);
-            return
-          }
-          if (this.down.length != response.data.sides[playerIndex].length) {
-            this.dropSelected();
-          } else {
-            for (let i = 0; i < this.down.length; i++) {
-              if (this.down.cards[i] != response.data.sides[playerIndex].cards[i]) {
-                this.dropSelected();
+          this.axios.get(this.backend+"/room").then(response => {
+              if (response.data === null) {
+                this.$router.push("/lobby");
+                return
               }
-            }
-          }
-          this.down = response.data.sides[playerIndex];
-          this.left = response.data.sides[(playerIndex+1)%4];
-          this.up = response.data.sides[(playerIndex+2)%4];
-          this.right = response.data.sides[(playerIndex+3)%4];
-          this.center = response.data.center;
-          this.status = response.data.status;
-          this.onBuypack = (playerIndex == response.data.buypackIndex);
-          this.lastTrick = response.data.lastTrick;
-        }).catch(this.updateLastError);
+              this.room = response.data;
+              let playerIndex = -1;
+              for (let i = 0; i < response.data.sides.length; i++) {
+                if (response.data.sides[i].name == this.playerName()) {
+                  playerIndex = i;
+                }
+              }
+              if (playerIndex === -1) {
+                console.log("player not found: "+response);
+                return
+              }
+              if (this.down.length != response.data.sides[playerIndex].length) {
+                this.dropSelected();
+              } else {
+                for (let i = 0; i < this.down.length; i++) {
+                  if (this.down.cards[i] != response.data.sides[playerIndex].cards[i]) {
+                    this.dropSelected();
+                  }
+                }
+              }
+              this.down = response.data.sides[playerIndex];
+              this.left = response.data.sides[(playerIndex+1)%4];
+              this.up = response.data.sides[(playerIndex+2)%4];
+              this.right = response.data.sides[(playerIndex+3)%4];
+              this.center = response.data.center;
+              this.status = response.data.status;
+              this.onBuypack = (playerIndex == response.data.buypackIndex);
+              this.lastTrick = response.data.lastTrick;
+              this.playersCount = response.data.playersCount;
+          }).catch(this.updateLastError);
       }
     },
     dropSelected() {
@@ -242,6 +263,11 @@ export default {
         this.axios.post(this.backend+"/takeTrick").then(() => {
             this.updateAll()
         }).catch(this.updateLastError);
+    },
+    start() {
+        this.axios.post(this.backend+"/roomReady").then(() => {
+            this.updateAll()
+        }).catch(this.updateLastError);
     }
   },
   data() {
@@ -261,6 +287,7 @@ export default {
       selected: [false, false, false, false, false, false, false, false, false, false, false, false],
       hovered: [false, false, false, false, false, false, false, false, false, false, false, false],
       backend: process.env.VUE_APP_HOSTNAME,
+      playersCount: 0,
       axios: axios.create({
         withCredentials: true
       })

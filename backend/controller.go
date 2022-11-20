@@ -22,12 +22,14 @@ func (c *Controller) Room(request *http.Request, playerName string) (interface{}
 		return nil, err
 	}
 
-	for i, _ := range result.Sides {
-		if result.Sides[i].Name == playerName || result.Sides[i].Open {
-			continue
-		}
-		for j, _ := range result.Sides[i].Cards {
-			result.Sides[i].Cards[j] = UnknownCard
+	if result != nil {
+		for i, _ := range result.Sides {
+			if result.Sides[i].Name == playerName || result.Sides[i].Open {
+				continue
+			}
+			for j, _ := range result.Sides[i].Cards {
+				result.Sides[i].Cards[j] = UnknownCard
+			}
 		}
 	}
 
@@ -166,7 +168,12 @@ func (c *Controller) PlayerIn(request *http.Request, playerName string) (interfa
 		return nil, errors.New("bad request")
 	}
 
-	err := c.roomManager.PlayerIn(request.Context(), req.RoomID, playerName)
+	roomID, err := NewRoomIDFromString(req.RoomID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.roomManager.PlayerIn(request.Context(), roomID, playerName)
 	if err != nil {
 		return nil, err
 	}
@@ -199,4 +206,13 @@ func (c *Controller) CreateRoom(request *http.Request, playerName string) (inter
 	}
 
 	return nil, nil
+}
+
+func (c *Controller) GetRooms(request *http.Request) (interface{}, error) {
+	rooms, err := c.roomManager.GetAll(request.Context())
+	if err != nil {
+		return nil, err
+	}
+
+	return rooms, nil
 }

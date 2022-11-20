@@ -26,8 +26,14 @@ import { useToast } from "vue-toastification";
 export default {
   name: 'LoginPage',
   methods: {
-    redirectToRoom() {
-        this.$router.push("/room");
+    redirect() {
+        this.axios.get(this.backend+"/room").then(response => {
+            if (response.data === null) {
+                this.$router.push("/lobby");
+                return
+            }
+            this.$router.push("/room");
+	}).catch(this.updateLastError);
     },
     isLogged() {
         return VueCookies.isKey("player")
@@ -42,7 +48,7 @@ export default {
         "password": this.password,
       }).then(() => {
         VueCookies.set("player", this.player, {expires: "12h"});
-        this.redirectToRoom()
+        this.redirect()
       }).catch(this.updateLastError);
     },
     register() {
@@ -58,7 +64,7 @@ export default {
     },
     logout() {
         VueCookies.remove("player")
-        this.forceRerender();
+        this.$router.push("/login");
     },
     toRegister() {
         this.type = "register"
@@ -95,7 +101,7 @@ export default {
   },
   created(){
     if (this.isLogged()) {
-      this.redirectToRoom()
+      this.redirect()
     }
   }
 }

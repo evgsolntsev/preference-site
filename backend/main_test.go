@@ -178,7 +178,7 @@ func TestRoomHandler(t *testing.T) {
             "lastTrick": [],
             "playersCount": 0,
             "buypackIndex": 0
-        }`, stored.ID)
+        }`, stored.ID.String())
 
 	res, err := json.Marshal(result)
 	require.NoError(t, err)
