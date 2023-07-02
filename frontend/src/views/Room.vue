@@ -77,11 +77,6 @@ export default {
             "Text": "Drop",
             "Click": this.drop
         }, {
-            "IsShown": () => (!this.onBuypack && (this.status !== 5)),
-            "IsDisabled": () => (false),
-            "Text": showText,
-            "Click": this.changeVisibility
-        }, {
             "IsShown": () => (!this.onBuypack && ((this.status === 1) || (this.status === 4))),
             "IsDisabled": this.isMoveDisabled,
             "Text": "Move",
@@ -96,6 +91,11 @@ export default {
             "IsDisabled": () => (false),
             "Text": "Shuffle",
             "Click": this.shuffle
+        }, {
+            "IsShown": () => (!this.onBuypack && (this.status !== 5)),
+            "IsDisabled": () => (false),
+            "Text": showText,
+            "Click": this.changeVisibility
         }, {
             "IsShown": () => (this.onBuypack && (this.status === 0)),
             "IsDisabled": () => (false),
